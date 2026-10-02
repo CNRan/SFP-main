@@ -155,6 +155,17 @@ MenuCommand#execute
 - **垃圾桶入口只有一个**：早期用烈焰棒做的 `clean` 按钮和垃圾桶功能重复，已删除。
 - 菜单/sub-GUI 的点击一律 `setCancelled(true)`（含拖拽），防止物品被拿走。
 
+**界面样式（dialogUI / 箱子）**：玩家偏好存 `settings.db`（`ui_preferences` 表，默认 dialogUI），
+用 `/menuui` 命令或菜单里的「界面样式」按钮切换。`MenuCommand` 按偏好分流：
+
+- dialogUI → `ui/DialogMenu`（Paper 弹窗：`DialogType.multiAction(...).columns(2)`，
+  每按钮一个 `customClick` 回调直接执行动作）
+- box → `MenuManager.openMainMenu`（箱子）
+
+两种界面**共用** `MenuManager.activeButtons / resolveAction / runAction / canOpen`，
+因此按钮内容与点击结果完全一致；`MenuListener` 已经薄化成「关界面 → `runAction`」。
+垃圾桶（需要取物品）保持箱子 UI，不做 dialogUI。
+
 ---
 
 ## 2. 传送系统（teleport 包）

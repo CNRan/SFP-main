@@ -1,6 +1,9 @@
 package cn.starfallplain.CN_Ran.sfp.menu;
 
 import cn.starfallplain.CN_Ran.sfp.StarfallplainMenu;
+import cn.starfallplain.CN_Ran.sfp.ui.DialogMenu;
+import cn.starfallplain.CN_Ran.sfp.ui.UiMode;
+import cn.starfallplain.CN_Ran.sfp.ui.UiPreferenceStore;
 import io.papermc.paper.command.brigadier.BasicCommand;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import org.bukkit.command.CommandSender;
@@ -37,8 +40,14 @@ public class MenuCommand implements BasicCommand {
             return;
         }
 
-        // 开关与打开权限的校验统一在 MenuManager.openMainMenu 里做，
-        // 与各子界面的「返回主菜单」按钮共用同一套行为
-        MenuManager.openMainMenu(plugin, player);
+        // 按玩家偏好选择界面样式：dialogUI 弹窗 / 箱子界面
+        // （开关与打开权限的校验在 MenuManager.canOpen / DialogMenu.open 里统一做）
+        UiPreferenceStore store = plugin.getUiPreferenceStore();
+        UiMode mode = store != null ? store.get(player.getUniqueId()) : UiMode.DIALOG;
+        if (mode == UiMode.DIALOG) {
+            DialogMenu.open(plugin, player);
+        } else {
+            MenuManager.openMainMenu(plugin, player);
+        }
     }
 }

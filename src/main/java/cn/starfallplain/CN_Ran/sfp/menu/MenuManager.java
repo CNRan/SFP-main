@@ -4,6 +4,15 @@ import cn.starfallplain.CN_Ran.sfp.StarfallplainMenu;
 import cn.starfallplain.CN_Ran.sfp.config.ConfigManager;
 import cn.starfallplain.CN_Ran.sfp.config.Messages;
 import cn.starfallplain.CN_Ran.sfp.config.module.MenuConfig;
+import cn.starfallplain.CN_Ran.sfp.teleport.TeleportManager;
+import cn.starfallplain.CN_Ran.sfp.teleport.gui.HomeListGui;
+import cn.starfallplain.CN_Ran.sfp.teleport.gui.TpaTargetGui;
+import cn.starfallplain.CN_Ran.sfp.teleport.gui.WarpListGui;
+import cn.starfallplain.CN_Ran.sfp.trashbin.TrashBinCommand;
+import cn.starfallplain.CN_Ran.sfp.trashbin.TrashBinManager;
+import cn.starfallplain.CN_Ran.sfp.ui.DialogMenu;
+import cn.starfallplain.CN_Ran.sfp.ui.UiMode;
+import cn.starfallplain.CN_Ran.sfp.ui.UiPreferenceStore;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
@@ -48,8 +57,14 @@ public class MenuManager {
      * @return 是否成功打开了菜单（false 表示已向玩家发送了失败提示）
      */
     public static boolean openMainMenu(StarfallplainMenu plugin, Player player) {
-        MenuConfig menuConfig = plugin.getConfigManager().menu();
+        if (!canOpen(plugin, player)) return false;
+        player.openInventory(createMainMenu(plugin, player));
+        return true;
+    }
 
+    /** 主菜单的「开关 + 打开权限」校验；箱子 UI 与 dialogUI 共用，保证所有入口行为一致 */
+    public static boolean canOpen(StarfallplainMenu plugin, Player player) {
+        MenuConfig menuConfig = plugin.getConfigManager().menu();
         String permission = menuConfig.getOpenPermission();
         if (permission != null && !permission.isBlank() && !player.hasPermission(permission)) {
             player.sendMessage(plugin.getMessage("common.no-permission", "<red>你没有权限使用此命令！</red>"));
@@ -59,8 +74,6 @@ public class MenuManager {
             player.sendMessage(plugin.getMessage("common.feature-disabled", "<red>该功能当前未启用。</red>"));
             return false;
         }
-
-        player.openInventory(createMainMenu(plugin, player));
         return true;
     }
 
@@ -99,6 +112,106 @@ public class MenuManager {
         if (button.getId().equals(menuConfig.getUiToggleButtonId())) return MenuHolder.ACTION_TOGGLE_UI;
         if (!button.getCommand().isBlank()) return MenuHolder.CMD_PREFIX + button.getCommand();
         return null;
+    }
+
+    /** 返回所有「可见且有动作」的按钮（按 menu.yml 顺序），供 dialogUI 渲染 */
+    public static List<MenuConfig.Button> activeButtons(MenuConfig menuConfig, ConfigManager cm) {
+        List<MenuConfig.Button> result = new ArrayList<>();
+        int size = menuConfig.getSize();
+        for (MenuConfig.Button button : menuConfig.getButtons().values()) {
+            if (!isFeatureEnabled(button.getId(), menuConfig, cm)) continue;
+            if (!button.isVisible()) continue;
+            if (button.getSlot() < 0 || button.getSlot() >= size) continue;
+            if (resolveAction(button, menuConfig) == null) continue;
+            result.add(button);
+        }
+        return result;
+    }
+
+    /**
+     * 执行一个按钮动作。箱子 UI 与 dialogUI **共用同一套逻辑**，保证点击结果一致。
+     * <p>
+     * 调用方（箱子 UI 的点击处理 / dialogUI 的回调）负责在需要时先关闭自己的界面，
+     * 这里只负责「把动作做出来」。
+     */
+    public static void runAction(StarfallplainMenu plugin, Player player, String action) {
+        if (action == null) return;
+        if (action.startsWith(MenuHolder.CMD_PREFIX)) {
+            String command = action.substring(MenuHolder.CMD_PREFIX.length());
+            Bukkit.getScheduler().runTask(plugin, () -> player.performCommand(command));
+            return;
+        }
+        switch (action) {
+            case MenuHolder.ACTION_TRASHBIN -> openTrashBin(plugin, player);
+            case MenuHolder.ACTION_HOME -> openHomeList(plugin, player);
+            case MenuHolder.ACTION_WARP -> openWarpList(plugin, player);
+            case MenuHolder.ACTION_BACK ->
+                    Bukkit.getScheduler().runTask(plugin, () -> player.performCommand("back"));
+            case MenuHolder.ACTION_TPA -> openTpaTarget(plugin, player);
+            case MenuHolder.ACTION_TOGGLE_UI -> toggleUi(plugin, player);
+            default -> { /* 未知动作：忽略 */ }
+        }
+    }
+
+    private static void openTrashBin(StarfallplainMenu plugin, Player player) {
+        TrashBinManager manager = plugin.getTrashBinManager();
+        if (manager == null) {
+            player.sendMessage(plugin.getConfigManager().messages().component("trashbin.disabled",
+                    "<red>垃圾桶系统未启用。</red>"));
+            return;
+        }
+        Bukkit.getScheduler().runTask(plugin, () ->
+                TrashBinCommand.openPage(plugin, player, manager, 0));
+    }
+
+    private static void openHomeList(StarfallplainMenu plugin, Player player) {
+        TeleportManager manager = plugin.getTeleportManager();
+        if (manager == null) {
+            player.sendMessage(plugin.getConfigManager().messages().component("common.feature-disabled",
+                    "<red>该功能当前未启用。</red>"));
+            return;
+        }
+        Bukkit.getScheduler().runTask(plugin, () -> HomeListGui.open(plugin, player, manager, 0));
+    }
+
+    private static void openWarpList(StarfallplainMenu plugin, Player player) {
+        TeleportManager manager = plugin.getTeleportManager();
+        if (manager == null) {
+            player.sendMessage(plugin.getConfigManager().messages().component("common.feature-disabled",
+                    "<red>该功能当前未启用。</red>"));
+            return;
+        }
+        Bukkit.getScheduler().runTask(plugin, () -> WarpListGui.open(plugin, player, manager, 0));
+    }
+
+    private static void openTpaTarget(StarfallplainMenu plugin, Player player) {
+        if (plugin.getTpaManager() == null) {
+            player.sendMessage(plugin.getConfigManager().messages().component("common.feature-disabled",
+                    "<red>该功能当前未启用。</red>"));
+            return;
+        }
+        Bukkit.getScheduler().runTask(plugin, () -> TpaTargetGui.open(plugin, player, 0));
+    }
+
+    /** 切换界面样式，并按新偏好重开菜单 */
+    private static void toggleUi(StarfallplainMenu plugin, Player player) {
+        UiPreferenceStore store = plugin.getUiPreferenceStore();
+        if (store == null) return;
+        UiMode next = store.get(player.getUniqueId()).toggle();
+        store.set(player.getUniqueId(), next);
+        player.sendMessage(plugin.getConfigManager().messages().component(
+                next == UiMode.DIALOG ? "menuui.toggled-dialog" : "menuui.toggled-box",
+                next == UiMode.DIALOG
+                        ? "<green>界面已切换为 dialogUI（弹窗界面）。</green>"
+                        : "<green>界面已切换为箱子界面。</green>"));
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            if (!player.isOnline()) return;
+            if (next == UiMode.DIALOG) {
+                DialogMenu.open(plugin, player);
+            } else {
+                openMainMenu(plugin, player);
+            }
+        });
     }
 
     public static Inventory createMainMenu(StarfallplainMenu plugin, Player player) {

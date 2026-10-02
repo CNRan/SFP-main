@@ -201,6 +201,17 @@ public final class SelfTest {
         } else {
             DbDebug.send(sender, "<gray>（控制台执行，跳过权限检查）</gray>");
         }
+
+        // dialogUI 构建冒烟：跑一遍 Dialog API 调用链，验证在服务器环境不抛异常
+        try {
+            if (cn.starfallplain.CN_Ran.sfp.ui.DialogMenu.build(plugin) != null) {
+                r.ok("dialogUI 主菜单构建正常（" + actions.size() + " 个按钮）");
+            } else {
+                r.warn("dialogUI 主菜单没有可用按钮");
+            }
+        } catch (Throwable t) {
+            r.fail("dialogUI 主菜单构建失败：" + t);
+        }
     }
 
     /** 把内部动作串翻译成人话 */
