@@ -31,6 +31,7 @@ public class MenuHolder implements InventoryHolder {
     public static final String ACTION_WARP = "actwarp";
     public static final String ACTION_BACK = "actback";
     public static final String ACTION_TPA = "acttpa";
+    public static final String ACTION_TOGGLE_UI = "acttoggleui";
     public static final String CMD_PREFIX = "cmd:";
 
     private Inventory inventory;

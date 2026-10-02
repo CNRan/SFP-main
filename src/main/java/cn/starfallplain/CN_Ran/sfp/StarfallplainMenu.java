@@ -2,6 +2,8 @@ package cn.starfallplain.CN_Ran.sfp;
 
 import cn.starfallplain.CN_Ran.sfp.bot.BotCommand;
 import cn.starfallplain.CN_Ran.sfp.bot.BotManager;
+import cn.starfallplain.CN_Ran.sfp.ui.MenuUiCommand;
+import cn.starfallplain.CN_Ran.sfp.ui.UiPreferenceStore;
 import cn.starfallplain.CN_Ran.sfp.chair.ChairListener;
 import cn.starfallplain.CN_Ran.sfp.chair.ChairManager;
 import cn.starfallplain.CN_Ran.sfp.clean.CleanTimePlaceholder;
@@ -53,6 +55,8 @@ public final class StarfallplainMenu extends JavaPlugin {
     private TpaManager tpaManager;
     /** 假人（/bot）：真玩家实体，用于保持区块加载 */
     private BotManager botManager;
+    /** 界面样式偏好（dialogUI / 箱子），存 settings.db */
+    private UiPreferenceStore uiPreferenceStore;
 
     @Override
     public void onEnable() {
@@ -67,6 +71,7 @@ public final class StarfallplainMenu extends JavaPlugin {
         setupChair();
         setupTeleport();
         setupBot();
+        setupUiPreferences();
         setupMenu();
 
         // 3) 注册命令（依赖上面已建好的各管理器，故放在最后）
@@ -103,6 +108,10 @@ public final class StarfallplainMenu extends JavaPlugin {
             botManager.saveData();
             botManager.shutdown();
         }
+        // 关闭界面偏好数据库
+        if (uiPreferenceStore != null) {
+            uiPreferenceStore.close();
+        }
         getLogger().info("Starfallplain Menu 已禁用！");
     }
 
@@ -132,6 +141,9 @@ public final class StarfallplainMenu extends JavaPlugin {
             // 假人：/bot create|remove|list|removeall
             registrar.register("bot", "假人管理（创建/删除/列表；假人会保持所在区块加载）",
                     new BotCommand(this));
+
+            // 界面样式切换：/menuui dialogui|box
+            registrar.register("menuui", "切换界面样式（dialogUI / 箱子）", new MenuUiCommand(this));
 
             // 管理 / 调试命令 /sfp：reload / status / db / test
             registrar.register("sfp", "星落平原管理命令（输入 /sfp 查看用法）", new SfpCommand(this));
@@ -222,6 +234,13 @@ public final class StarfallplainMenu extends JavaPlugin {
         }
         chairManager = new ChairManager(this, configManager);
         getServer().getPluginManager().registerEvents(new ChairListener(this, configManager, chairManager), this);
+    }
+
+    /**
+     * 界面样式偏好（dialogUI / 箱子）：独立于传送模块的小型 SQLite。
+     */
+    private void setupUiPreferences() {
+        uiPreferenceStore = new UiPreferenceStore(this);
     }
 
     private void setupMenu() {
@@ -346,5 +365,10 @@ public final class StarfallplainMenu extends JavaPlugin {
     /** 假人管理器；bot.yml 关闭时为 null */
     public BotManager getBotManager() {
         return botManager;
+    }
+
+    /** 界面样式偏好存储 */
+    public UiPreferenceStore getUiPreferenceStore() {
+        return uiPreferenceStore;
     }
 }

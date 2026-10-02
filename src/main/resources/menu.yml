@@ -65,6 +65,7 @@ bind:
   warp-button: "warp"
   back-button: "back"
   tpa-button: "tpa"
+  ui-toggle-button: "ui-toggle"
 
 # 权限
 permission: "sfpmenu.player"
@@ -146,4 +147,14 @@ buttons:
     lore:
       - "<gray>在方块两侧放告示牌，写上 chair-l / chair-r</gray>"
       - "<gray>右键中间方块即可坐下</gray>"
+    command: ""
+
+  # 界面样式切换（内部动作，在 dialogUI 与箱子界面之间切换）
+  ui-toggle:
+    enabled: true
+    slot: 34
+    material: BOOK
+    name: "<yellow>界面样式</yellow>"
+    lore:
+      - "<gray>在 dialogUI 与箱子界面之间切换</gray>"
     command: ""

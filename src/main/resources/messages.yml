@@ -180,6 +180,13 @@ bot:
   list-empty: "<yellow>当前没有假人。</yellow>"
   list-entry: "<gray> - </gray><white>{name}</white> <dark_gray>({world} {x}, {y}, {z}) {state}</dark_gray>"
 
+# ---------- 界面样式切换（/menuui）----------
+menuui:
+  current: "<gray>当前界面样式：<white>{mode}</white>。切换：/menuui dialogui 或 /menuui box</gray>"
+  usage: "<red>用法：/menuui dialogui 或 /menuui box</red>"
+  toggled-dialog: "<green>界面已切换为 dialogUI（弹窗界面），下次打开菜单生效。</green>"
+  toggled-box: "<green>界面已切换为箱子界面，下次打开菜单生效。</green>"
+
 # ---------- 菜单（menu 包）----------
 menu:
   head-name: "<!i><yellow>{player}</yellow>"

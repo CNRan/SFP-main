@@ -88,6 +88,11 @@ public abstract class AbstractConfig {
         config.setDefaults(defaults);
         config.options().copyDefaults(true);
         save();
+        // 关键：save() 只把缺失键写进磁盘，内存中的 config 并没有同步这些新键 ——
+        // 首次升级时 onLoaded() 若直接读内存，新键（尤其是嵌套 map 里的，如 buttons.ui-toggle）
+        // 的叶子字段会取不到（例如新按钮 slot 读成 -1）。所以这里重新读盘一次，
+        // 保证 onLoaded() 拿到的就是补全后的完整配置。
+        config = YamlConfiguration.loadConfiguration(file);
     }
 
     /** 子类加载完成后的钩子（用于读取并缓存字段） */

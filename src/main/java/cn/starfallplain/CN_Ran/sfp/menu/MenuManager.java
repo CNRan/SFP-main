@@ -96,6 +96,7 @@ public class MenuManager {
         if (button.getId().equals(menuConfig.getWarpButtonId())) return MenuHolder.ACTION_WARP;
         if (button.getId().equals(menuConfig.getBackButtonId())) return MenuHolder.ACTION_BACK;
         if (button.getId().equals(menuConfig.getTpaButtonId())) return MenuHolder.ACTION_TPA;
+        if (button.getId().equals(menuConfig.getUiToggleButtonId())) return MenuHolder.ACTION_TOGGLE_UI;
         if (!button.getCommand().isBlank()) return MenuHolder.CMD_PREFIX + button.getCommand();
         return null;
     }

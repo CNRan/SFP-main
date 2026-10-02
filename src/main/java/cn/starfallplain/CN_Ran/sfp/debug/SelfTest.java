@@ -215,6 +215,7 @@ public final class SelfTest {
             case MenuHolder.ACTION_WARP -> "打开传送点列表";
             case MenuHolder.ACTION_BACK -> "执行 /back";
             case MenuHolder.ACTION_TPA -> "打开玩家传送目标选择界面";
+            case MenuHolder.ACTION_TOGGLE_UI -> "切换界面样式（dialogUI / 箱子）";
             default -> action;
         };
     }

@@ -147,6 +147,7 @@ MenuCommand#execute
 | `dominion` | 29 | GRASS_BLOCK | `cmd:dom`（执行 Dominion 的 `/dom`） |
 | `tpa` | 31 | COMPASS | `acttpa` → 打开「选择传送目标」界面 |
 | `chair` | 33 | OAK_SIGN | 无绑定（**纯说明按钮**，靠 lore 介绍告示牌椅子） |
+| `ui-toggle` | 34 | BOOK | `acttoggleui` → 切换界面样式（dialogUI / 箱子） |
 
 - 绑定关系来自 `menu.yml` 的 `bind.*-button`（默认值就是按钮 id）。
 - 动作分派在 `MenuListener#onInventoryClick`：`cmd:` 前缀 → `closeInventory()` +
@@ -444,6 +445,7 @@ PlayerList#placeNewPlayer(connection, player, cookie)            ← 服务端�
 | 存储 | 文件 | 存放内容 | 代码 |
 |---|---|---|---|
 | SQLite | `teleport.db` | `homes` / `warps` / `last_locations` | `Database` + 三个 Store |
+| SQLite | `settings.db` | `ui_preferences`（界面样式偏好） | `UiPreferenceStore` |
 | YAML | `trashbin-data.yml` | 垃圾桶物品列表 | `TrashBinManager` |
 | YAML | `bots.yml` | 假人记录（用于重启重建） | `BotManager` |
 | 内存 | — | tpa 请求、传送冷却、延迟传送队列、在座玩家 | 各 Manager |
@@ -499,6 +501,9 @@ SQLite 的 `ALTER TABLE` 限制：只能加列 / 改列名 / 删列（3.35+）�
 
 1. **改 `resources/*.yml` 里已存在键的默认值 → 必须手工同步服务器上的同名配置**。
    `mergeDefaults()` 只补缺失键、不覆盖已有键。**删按钮/删键也一样要手工删线上的**。
+   （新增键会自动补，但注意：`mergeDefaults()` 的 `save()` 只写磁盘、不改内存，
+   所以它在 `save()` 之后重新 `loadConfiguration` 了一次 —— 否则首次升级时新键的叶子字段
+   在内存里读不到，比如新按钮 `slot` 读成 -1。）
 2. **配置类的 `onLoaded()` 不得依赖子类字段初始化器**：`AbstractConfig` 的构造器就会调用
    `load()` → `onLoaded()`，而 Java 是在 `super(...)` 返回**之后**才执行子类字段初始化器 ——
    那一刻集合字段还是 null（NPE），而且初始化器随后还会把填好的内容覆盖成空集合。

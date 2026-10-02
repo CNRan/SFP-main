@@ -71,6 +71,11 @@ public class MenuListener implements Listener {
 
         if (MenuHolder.ACTION_TPA.equals(action)) {
             handleTpaTarget(player);
+            return;
+        }
+
+        if (MenuHolder.ACTION_TOGGLE_UI.equals(action)) {
+            handleUiToggle(player);
         }
     }
 
@@ -130,6 +135,23 @@ public class MenuListener implements Listener {
         player.closeInventory();
         Bukkit.getScheduler().runTask(plugin, () -> {
             if (player.isOnline()) TpaTargetGui.open(plugin, player, 0);
+        });
+    }
+
+    /** 菜单里的界面样式切换按钮：切换偏好后重新打开菜单 */
+    private void handleUiToggle(Player player) {
+        cn.starfallplain.CN_Ran.sfp.ui.UiPreferenceStore store = plugin.getUiPreferenceStore();
+        if (store == null) return;
+        cn.starfallplain.CN_Ran.sfp.ui.UiMode next = store.get(player.getUniqueId()).toggle();
+        store.set(player.getUniqueId(), next);
+        player.sendMessage(configManager.messages().component(
+                next == cn.starfallplain.CN_Ran.sfp.ui.UiMode.DIALOG ? "menuui.toggled-dialog" : "menuui.toggled-box",
+                next == cn.starfallplain.CN_Ran.sfp.ui.UiMode.DIALOG
+                        ? "<green>界面已切换为 dialogUI（弹窗界面）。</green>"
+                        : "<green>界面已切换为箱子界面。</green>"));
+        player.closeInventory();
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            if (player.isOnline()) MenuManager.openMainMenu(plugin, player);
         });
     }
 }

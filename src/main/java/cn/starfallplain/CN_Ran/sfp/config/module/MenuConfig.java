@@ -91,6 +91,8 @@ public final class MenuConfig extends AbstractConfig {
     private String backButtonId;
     // 玩家传送（tpa）按钮 id
     private String tpaButtonId;
+    // 界面样式切换按钮 id
+    private String uiToggleButtonId;
 
     // 玩家头颅位置
     private boolean showPlayerHead;
@@ -123,6 +125,7 @@ public final class MenuConfig extends AbstractConfig {
         warpButtonId = getString("bind.warp-button", "warp");
         backButtonId = getString("bind.back-button", "back");
         tpaButtonId = getString("bind.tpa-button", "tpa");
+        uiToggleButtonId = getString("bind.ui-toggle-button", "ui-toggle");
 
         openPermission = getString("permission", "sfpmenu.player");
         permissionMessage = getString("permission-message", "你没有权限使用此命令");
@@ -195,6 +198,8 @@ public final class MenuConfig extends AbstractConfig {
     public String getBackButtonId() { return backButtonId; }
 
     public String getTpaButtonId() { return tpaButtonId; }
+
+    public String getUiToggleButtonId() { return uiToggleButtonId; }
 
     public boolean isShowPlayerHead() { return showPlayerHead; }
 
