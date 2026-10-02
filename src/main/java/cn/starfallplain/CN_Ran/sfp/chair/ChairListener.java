@@ -116,7 +116,9 @@ public class ChairListener implements Listener {
         // 防止原版反作弊因坐在盔甲架上踢出玩家
         Player player = event.getPlayer();
         if (!chairManager.isSitting(player)) return;
-        String reason = event.getReason() == null ? "" : event.getReason().toLowerCase();
+        String reason = event.reason() == null ? ""
+                : net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer
+                        .plainText().serialize(event.reason()).toLowerCase();
         if (reason.contains("flying") || reason.contains("飞行")
                 || reason.contains("moving too fast") || reason.contains("移动过快")) {
             event.setCancelled(true);

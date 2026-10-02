@@ -6,7 +6,9 @@ import org.bukkit.Registry;
 import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 
+import java.util.HashMap;
 import java.util.Locale;
+import java.util.Map;
 
 /**
  * 音效工具：把配置中的音效名解析为 {@link Sound} 并播放。
@@ -20,27 +22,44 @@ import java.util.Locale;
  */
 public final class SoundUtil {
 
+    /** 名称（大写枚举名 / 小写注册名）→ Sound；首次解析时构建 */
+    private static Map<String, Sound> cache;
+
     private SoundUtil() {
     }
 
     /** 解析音效名，无效返回 null */
-    @SuppressWarnings("deprecation")
     public static Sound resolve(String name) {
         if (name == null || name.isBlank()) return null;
-        // 优先按 Bukkit 枚举名（配置文件里最常用这种写法）
-        try {
-            return Sound.valueOf(name.trim().toUpperCase(Locale.ROOT));
-        } catch (IllegalArgumentException ignored) {
-            // 不是枚举名，下面按注册名再试
-        }
-        // 注册名（注意是点分隔，如 minecraft:entity.enderman.teleport）
-        String key = name.trim().toLowerCase(Locale.ROOT);
+        ensureCache();
+
+        String trimmed = name.trim();
+        Sound sound = cache.get(trimmed.toUpperCase(Locale.ROOT));
+        if (sound != null) return sound;
+
+        // 再按注册名试（minecraft:entity.enderman.teleport）
+        String key = trimmed.toLowerCase(Locale.ROOT);
         if (!key.contains(":")) {
             key = "minecraft:" + key;
         }
         NamespacedKey namespacedKey = NamespacedKey.fromString(key);
-        if (namespacedKey == null) return null;
-        return Registry.SOUNDS.get(namespacedKey);
+        return namespacedKey == null ? null : Registry.SOUNDS.get(namespacedKey);
+    }
+
+    /**
+     * 构建「名称 → Sound」缓存。
+     * 注册名是点分隔的（entity.enderman.teleport），而配置里习惯写枚举名
+     * （ENTITY_ENDERMAN_TELEPORT），两种形式都放一份，避免依赖 valueOf（已标记待删除）。
+     */
+    private static void ensureCache() {
+        if (cache != null) return;
+        Map<String, Sound> map = new HashMap<>();
+        for (Sound sound : Registry.SOUNDS) {
+            NamespacedKey key = sound.getKey();
+            map.put(key.getKey().replace('.', '_').toUpperCase(Locale.ROOT), sound);
+            map.put(key.getKey().toLowerCase(Locale.ROOT), sound);
+        }
+        cache = map;
     }
 
     /** 在世界某位置播放音效；音效名无效则忽略 */

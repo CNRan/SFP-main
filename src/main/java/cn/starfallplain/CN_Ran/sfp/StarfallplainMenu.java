@@ -2,6 +2,8 @@ package cn.starfallplain.CN_Ran.sfp;
 
 import cn.starfallplain.CN_Ran.sfp.bot.BotCommand;
 import cn.starfallplain.CN_Ran.sfp.bot.BotManager;
+import cn.starfallplain.CN_Ran.sfp.display.ScoreboardManager;
+import cn.starfallplain.CN_Ran.sfp.display.TabManager;
 import cn.starfallplain.CN_Ran.sfp.ui.MenuUiCommand;
 import cn.starfallplain.CN_Ran.sfp.ui.UiPreferenceStore;
 import cn.starfallplain.CN_Ran.sfp.chair.ChairListener;
@@ -57,6 +59,10 @@ public final class StarfallplainMenu extends JavaPlugin {
     private BotManager botManager;
     /** 界面样式偏好（dialogUI / 箱子），存 settings.db */
     private UiPreferenceStore uiPreferenceStore;
+    /** Tab 列表头部 / 底部（display 包） */
+    private TabManager tabManager;
+    /** 右侧计分板（display 包） */
+    private ScoreboardManager scoreboardManager;
 
     @Override
     public void onEnable() {
@@ -73,6 +79,8 @@ public final class StarfallplainMenu extends JavaPlugin {
         setupBot();
         setupUiPreferences();
         setupMenu();
+        setupTab();
+        setupScoreboard();
 
         // 3) 注册命令（依赖上面已建好的各管理器，故放在最后）
         registerCommands();
@@ -111,6 +119,13 @@ public final class StarfallplainMenu extends JavaPlugin {
         // 关闭界面偏好数据库
         if (uiPreferenceStore != null) {
             uiPreferenceStore.close();
+        }
+        // 停掉显示相关的定时任务
+        if (tabManager != null) {
+            tabManager.shutdown();
+        }
+        if (scoreboardManager != null) {
+            scoreboardManager.shutdown();
         }
         getLogger().info("Starfallplain Menu 已禁用！");
     }
@@ -243,6 +258,23 @@ public final class StarfallplainMenu extends JavaPlugin {
      */
     private void setupUiPreferences() {
         uiPreferenceStore = new UiPreferenceStore(this);
+    }
+
+    /**
+     * Tab 列表（display 包）：头部 / 底部文字，内容与频率全部来自 tab.yml。
+     */
+    private void setupTab() {
+        if (!configManager.tab().isEnabled()) return;
+        tabManager = new TabManager(this, configManager);
+    }
+
+    /**
+     * 右侧计分板（display 包）：标题与行来自 scoreboard.yml。
+     */
+    private void setupScoreboard() {
+        if (!configManager.scoreboard().isEnabled()) return;
+        scoreboardManager = new ScoreboardManager(this, configManager);
+        Bukkit.getPluginManager().registerEvents(scoreboardManager, this);
     }
 
     private void setupMenu() {

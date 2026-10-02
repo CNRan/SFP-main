@@ -4,6 +4,8 @@ import cn.starfallplain.CN_Ran.sfp.config.module.BotConfig;
 import cn.starfallplain.CN_Ran.sfp.config.module.ChairConfig;
 import cn.starfallplain.CN_Ran.sfp.config.module.CleanConfig;
 import cn.starfallplain.CN_Ran.sfp.config.module.MenuConfig;
+import cn.starfallplain.CN_Ran.sfp.config.module.ScoreboardConfig;
+import cn.starfallplain.CN_Ran.sfp.config.module.TabConfig;
 import cn.starfallplain.CN_Ran.sfp.config.module.TeleportConfig;
 import cn.starfallplain.CN_Ran.sfp.config.module.TrashBinConfig;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -21,7 +23,10 @@ import java.util.List;
  *   clean.yml        自动扫地（clean 包）
  *   trashbin.yml     垃圾桶（trashbin 包）
  *   chair.yml        椅子（chair 包）
- *   teleport.yml     传送（teleport 包：/back、/home、/warp）
+ *   teleport.yml     传送（teleport 包：/back、/home、/warp、/tpa）
+ *   bot.yml          假人（bot 包）
+ *   tab.yml          Tab 列表（display 包）
+ *   scoreboard.yml   计分板（display 包）
  *   messages.yml     所有面向玩家的文案
  * </pre>
  * 每个功能文件都有 enabled 开关，关掉即完全停用对应功能
@@ -41,6 +46,8 @@ public final class ConfigManager {
     private ChairConfig chairConfig;
     private TeleportConfig teleportConfig;
     private BotConfig botConfig;
+    private TabConfig tabConfig;
+    private ScoreboardConfig scoreboardConfig;
 
     public ConfigManager(JavaPlugin plugin) {
         this.plugin = plugin;
@@ -59,6 +66,8 @@ public final class ConfigManager {
         chairConfig = new ChairConfig(plugin);
         teleportConfig = new TeleportConfig(plugin);
         botConfig = new BotConfig(plugin);
+        tabConfig = new TabConfig(plugin);
+        scoreboardConfig = new ScoreboardConfig(plugin);
     }
 
     /** 重载所有配置（含 messages） */
@@ -80,6 +89,8 @@ public final class ConfigManager {
         lines.add(flagLine("椅子", chairConfig.isEnabled(), true));
         lines.add(flagLine("传送（/back /home /warp /tpa）", teleportConfig.isEnabled(), true));
         lines.add(flagLine("假人（/bot）", botConfig.isEnabled(), true));
+        lines.add(flagLine("Tab 列表", tabConfig.isEnabled(), true));
+        lines.add(flagLine("计分板", scoreboardConfig.isEnabled(), true));
         lines.add("  · 扫地倒计时 PAPI 占位符：" + (papiAvailable ? "可用" : "不可用（缺少 PlaceholderAPI）"));
         return lines;
     }
@@ -126,5 +137,13 @@ public final class ConfigManager {
 
     public BotConfig bot() {
         return botConfig;
+    }
+
+    public TabConfig tab() {
+        return tabConfig;
+    }
+
+    public ScoreboardConfig scoreboard() {
+        return scoreboardConfig;
     }
 }

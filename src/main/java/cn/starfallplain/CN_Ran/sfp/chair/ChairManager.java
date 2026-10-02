@@ -105,7 +105,7 @@ public class ChairManager {
         stand.setVisible(false);
         stand.setSmall(true);
         stand.setInvulnerable(true);
-        stand.setCustomName("stf-chair");
+        stand.customName(net.kyori.adventure.text.Component.text("stf-chair"));
         stand.setCustomNameVisible(false);
 
         stand.addPassenger(player);
@@ -164,7 +164,8 @@ public class ChairManager {
      */
     private String getSignFirstLine(Block block) {
         if (block.getState() instanceof Sign sign) {
-            return sign.getLine(0);
+            return net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer
+                    .plainText().serialize(sign.line(0));
         }
         return null;
     }

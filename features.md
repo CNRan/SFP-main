@@ -50,6 +50,8 @@
 | `chair.yml` | `ChairConfig` | 椅子 |
 | `teleport.yml` | `TeleportConfig` | 传送（back/home/warp/tpa + 数据库） |
 | `bot.yml` | `BotConfig` | 假人 |
+| `tab.yml` | `TabConfig` | Tab 列表头部/底部（display 包） |
+| `scoreboard.yml` | `ScoreboardConfig` | 计分板（display 包） |
 | `messages.yml` | `Messages` | 所有面向玩家的文案（**不继承 AbstractConfig**） |
 
 规则：
@@ -63,7 +65,7 @@
 **启动时会自动补齐缺失键**：`AbstractConfig#mergeDefaults()` 用 jar 内同名 yml 做 defaults，
 `copyDefaults(true)` 后立刻 `save()`。注意它**只补缺失键、不覆盖已存在的键** ——
 所以改了 `resources/*.yml` 里**已存在**键的默认值后，服务器上的老配置文件**不会更新**，
-必须手工同步（详见 §8）。
+必须手工同步（详见 §9）。
 
 ### 0.3 命令注册机制
 
@@ -179,7 +181,7 @@ MenuCommand#execute
 
 ## 2. 传送系统（teleport 包）
 
-数据存 SQLite（`teleport.db`），会话态（tpa）存内存。详见 §7。
+数据存 SQLite（`teleport.db`），会话态（tpa）存内存。详见 §8。
 
 ### 2.1 传送内核 `TeleportManager#teleport(player, target)`
 
@@ -270,7 +272,7 @@ MenuCommand#execute
 ### 2.5 `/tpa` `/tpahere` `/tpaccept` `/tpdeny` `/tpaui`（`TpaManager` + `TpaCommand`）
 
 **请求会话态不入库**（重启即失效；进库反而要处理过期清理）；
-**界面偏好入库**（`settings.db` 的 `tpa_ui_preferences`，见 §7）。
+**界面偏好入库**（`settings.db` 的 `tpa_ui_preferences`，见 §8）。
 
 `TpaCommand`（五个标签一个类，`action` 区分）统一前置：
 玩家 → `sfpmenu.teleport` → `tpa.enabled`。
@@ -474,7 +476,50 @@ PlayerList#placeNewPlayer(connection, player, cookie)            ← 服务端�
 
 ---
 
-## 7. 数据与持久化
+## 7. 信息显示（display 包）
+
+两块**纯展示**模块，内容全部由配置文件驱动（`tab.yml` / `scoreboard.yml`），
+支持 MiniMessage + 内置占位符 + PlaceholderAPI 占位符，按 `refresh-ticks`（默认 20 = 每秒）刷新。
+
+**内置占位符**（`display/DisplayText`，不依赖任何插件）：
+`{player}` `{world}` `{x}` `{y}` `{z}` `{online}` `{max}` `{tps}` `{mspt}`
+（`{tps}` = 最近 1 分钟 TPS、`{mspt}` = 每 tick 平均耗时，均由插件自己算**当前值**，
+比 spark 的 `%spark_tps%`（一次给多个时间窗口）更适合「只看当前」的场景）
+
+**渲染顺序（踩过坑，别改）**：
+1. 先替换内置占位符
+2. 把模板交给 MiniMessage 解析成 Component —— 模板自身的标签结构因此一定正确
+3. 最后在**组件上**用 `Component#replaceText` 做 PAPI 替换，返回值作为纯组件插入
+
+如果反过来（先把 PAPI 替换进字符串、再整体 MiniMessage 解析），像 spark 这类
+**返回值自带颜色码（含 `§r`）**的扩展会把外层标签重置掉，`</white></gray>`
+就会以字面形式显示出来。PAPI 用**反射**调用（可选依赖，直接引用会在未装 PAPI 时类加载失败），
+返回值里的 `§` 色码交给 `LegacyComponentSerializer` 解析。
+
+### 7.1 Tab 列表（`display/TabManager`）
+
+- `tab.yml` 的 `header` / `footer` 各是多行列表 → `Audience#sendPlayerListHeaderAndFooter`
+  （注意：Paper 的 `Player` 上没有 `setPlayerListHeaderFooter`，那是旧 API）
+- 每秒为所有在线玩家刷新一次
+
+### 7.2 计分板（`display/ScoreboardManager`）
+
+- `scoreboard.yml` 的 `title` + `lines`（最多 15 行，超出会告警并截断；`""` 表示空行）
+- 每位玩家一个**独立** `Scoreboard`（`Bukkit.getScoreboardManager().getNewScoreboard()`），
+  不污染服务端主计分板；行内容用 `Score#customName(Component)` 承载（entry 只是内部 key，不显示），
+  并用 `Objective#numberFormat(NumberFormat.blank())` 隐藏行尾的分数数字
+- 玩家退出时丢弃其计分板实例（`PlayerQuitEvent`）
+- ⚠️ 其他插件若也占用右侧计分板会互相覆盖，建议只留一个
+
+### 7.3 音效解析（`util/SoundUtil`）
+
+配置里既支持 Bukkit 枚举名（`ENTITY_ENDERMAN_TELEPORT`）也支持注册名
+（`minecraft:entity.enderman.teleport`）。查找走 `Registry.SOUNDS` + 首次构建的名称缓存 ——
+**`Sound#valueOf` 已被标记为待删除，不要再用**；同理 `Nameable#setCustomName(String)`、
+`Sign#getLine(int)`、`PlayerKickEvent#getReason()` 在 2.6.0 也都换成了 Adventure 版本
+（`customName(Component)`、`Sign#line(int)`、`reason()`）。
+
+## 8. 数据与持久化
 
 | 存储 | 文件 | 存放内容 | 代码 |
 |---|---|---|---|
@@ -484,7 +529,7 @@ PlayerList#placeNewPlayer(connection, player, cookie)            ← 服务端�
 | YAML | `bots.yml` | 假人记录（用于重启重建） | `BotManager` |
 | 内存 | — | tpa 请求、传送冷却、延迟传送队列、在座玩家 | 各 Manager |
 
-### 7.1 传送数据库分层
+### 8.1 传送数据库分层
 
 ```
 TeleportManager
@@ -507,7 +552,7 @@ TeleportManager
   当前全部调用都在主线程（命令 / 事件 / GUI / 同步调度任务）。
   **若以后改成异步保存，必须给数据访问层补同步。**
 
-### 7.2 表结构迁移（改表结构必看）
+### 8.2 表结构迁移（改表结构必看）
 
 `Database` 里有 `SCHEMA_VERSION`，存在 SQLite 的 `PRAGMA user_version`。
 老库与新库的 `user_version` 都是 0，所以从 0 逐级判断能同时覆盖两种情况。
@@ -524,14 +569,14 @@ TeleportManager
 SQLite 的 `ALTER TABLE` 限制：只能加列 / 改列名 / 删列（3.35+），
 **不能**加「无默认值的 NOT NULL 列」，也不能改列类型或主键。
 
-### 7.3 备份建议
+### 8.3 备份建议
 
 正常停服后 `-wal` 会自动合并回 `teleport.db`，**直接拷 `teleport.db` 即可**；
 开服状态下想拷贝，先执行 `/sfp db checkpoint`。
 
 ---
 
-## 8. 改动时的注意事项（踩坑清单）
+## 9. 改动时的注意事项（踩坑清单）
 
 1. **改 `resources/*.yml` 里已存在键的默认值 → 必须手工同步服务器上的同名配置**。
    `mergeDefaults()` 只补缺失键、不覆盖已有键。**删按钮/删键也一样要手工删线上的**。
@@ -542,7 +587,7 @@ SQLite 的 `ALTER TABLE` 限制：只能加列 / 改列名 / 删列（3.35+）�
    `load()` → `onLoaded()`，而 Java 是在 `super(...)` 返回**之后**才执行子类字段初始化器 ——
    那一刻集合字段还是 null（NPE），而且初始化器随后还会把填好的内容覆盖成空集合。
    集合类字段一律在 `onLoaded()` 内部 `new`。（2.0.3 修的启动崩溃就是这个）
-3. **改表结构必须走 §7.2 的两步**，否则老库不会升级。
+3. **改表结构必须走 §8.2 的两步**，否则老库不会升级。
 4. **新增菜单按钮**：只需改 `menu.yml`（`buttons.<id>` + 必要时 `bind.*-button`）。
    若要内部动作，才需要动 `MenuHolder`（加常量）+ `MenuManager`（`resolveAction` /
    `isFeatureEnabled`）+ `MenuListener`（分派）。`command:` 留空且不在 `bind.*` 里 = 点了没反应
@@ -562,7 +607,7 @@ SQLite 的 `ALTER TABLE` 限制：只能加列 / 改列名 / 删列（3.35+）�
 
 ---
 
-## 9. 已知未生效 / 预留的配置项
+## 10. 已知未生效 / 预留的配置项
 
 以下五项曾在代码中「定义了但没人用」，**2.5.0 已全部删除**（配置键 + 代码访问器 + 引用一并清理）：
 
@@ -574,7 +619,7 @@ SQLite 的 `ALTER TABLE` 限制：只能加列 / 改列名 / 删列（3.35+）�
 | `trashbin.global` | 无引用；按玩家隔离未实现 |
 | `config.yml` 的 `currency-name` | `GlobalConfig#getCurrencyName()` 无调用点，扫地广播的 `{currency}` 占位符也是死代码 |
 
-## 10. 新增功能检查清单
+## 11. 新增功能检查清单
 
 - [ ] `resources/` 加 `xxx.yml`（首字段 `enabled`，注释写清每个键）
 - [ ] `config/module/XxxConfig.java` 继承 `AbstractConfig`，`onLoaded()` 里读值
@@ -587,7 +632,7 @@ SQLite 的 `ALTER TABLE` 限制：只能加列 / 改列名 / 删列（3.35+）�
 - [ ] 若要命令：写 `XxxCommand implements BasicCommand`，在 `registerCommands()` 里注册，
       权限节点补进 `paper-plugin.yml`
 - [ ] 若要界面：新建 Holder + Gui，点击统一挂在对应 Listener；导航行沿用 §2.6 的槽位约定
-- [ ] 数据持久化：能进 SQLite 的走 db 包（注意 §7.2 的迁移步骤）；
+- [ ] 数据持久化：能进 SQLite 的走 db 包（注意 §8.2 的迁移步骤）；
       小数据用 YAML；**纯会话态一律放内存**
 - [ ] 若绑定菜单按钮：`menu.yml` 加按钮 + `bind.*-button`，并按第 4 条改三个类
 - [ ] **把本功能写进 features.md**（入口 / 调用链 / 流程 / 配置键 / 权限 / 数据文件）
