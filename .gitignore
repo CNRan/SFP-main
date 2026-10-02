@@ -1,0 +1,17 @@
+# Maven 构建产物
+target/
+dependency-reduced-pom.xml
+
+# IDEA
+.idea/
+*.iml
+*.ipr
+*.iws
+
+# 其他工具目录
+.workbuddy/
+.trae/
+
+# 运行期数据
+*.db
+*.log

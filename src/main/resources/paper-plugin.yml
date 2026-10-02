@@ -1,0 +1,70 @@
+# ============================================================
+#  星落平原（StarfallplainMenu）—— Paper 插件描述文件
+# ============================================================
+#  本文件是 paper-plugin.yml（Paper 原生插件格式），不是旧的 Bukkit plugin.yml。
+#
+#  Paper 插件不支持 commands 段，命令必须在代码里注册：
+#    · 见 StarfallplainMenu#registerCommands（LifecycleEvents.COMMANDS）
+#  权限、依赖、加载顺序仍可用本文件声明。
+# ============================================================
+
+name: StarfallplainMenu
+version: '${version}'
+main: cn.starfallplain.CN_Ran.sfp.StarfallplainMenu
+
+# 最低可加载的 Paper 版本：26.1 / 26.2 / 26.3 均满足。
+# 编译目标为 26.3 API（见 pom.xml 的 paper.version）。
+api-version: '26.1'
+
+# 世界加载完成后再启用（与本插件原本的 POSTWORLD 行为一致，也是 Paper 插件默认值）
+load: POSTWORLD
+
+description: 星落平原整合插件：菜单 / 传送(back·home·warp) / 自动扫地 / 垃圾桶 / 椅子
+author: CN_Ran
+
+# 本插件使用 Bukkit 调度器与 PlayerMoveEvent，暂不兼容 Folia
+folia-supported: false
+
+# ------------------------------------------------------------
+#  依赖声明（取代旧的 depend / softdepend / loadbefore）
+#    load            BEFORE —— 依赖插件先于本插件加载
+#    required        false  —— 依赖缺席时本插件照常启用，相关功能自动降级
+#    join-classpath  true   —— 本插件可访问对方类路径（直接继承其 API 类时必须为 true）
+# ------------------------------------------------------------
+dependencies:
+  server:
+    # 占位符：CleanTimePlaceholder 直接继承 PlaceholderExpansion，必须共享类路径
+    PlaceholderAPI:
+      load: BEFORE
+      required: false
+      join-classpath: true
+    # 领地：本插件只是让菜单按钮执行 /dom，不接触其 API，故不共享类路径
+    Dominion:
+      load: BEFORE
+      required: false
+      join-classpath: false
+
+# ------------------------------------------------------------
+#  权限节点（与原 plugin.yml 完全一致）
+#  写法与 Bukkit 相同：description / default / children
+#  default 取值：true / false / op / notop
+# ------------------------------------------------------------
+permissions:
+  sfpmenu.player:
+    description: 允许打开星落平原菜单
+    default: true
+  sfpmenu.teleport:
+    description: 允许使用传送命令（/back /home /warp 等）
+    default: true
+  sfpmenu.home.bypass-limit:
+    description: 绕过家数量上限
+    default: false
+  sfpmenu.warp.set:
+    description: 允许创建公共传送点（/setwarp）
+    default: op
+  sfpmenu.warp.delete:
+    description: 允许删除公共传送点（/delwarp）
+    default: op
+  sfpmenu.admin:
+    description: 允许使用 /sfp 管理命令（重载配置）
+    default: op

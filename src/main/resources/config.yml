@@ -1,0 +1,32 @@
+# ==========================================================
+# 星落平原主菜单 (sfp-main) —— 全局配置
+# ----------------------------------------------------------
+# 本插件按功能包拆分配置文件，一个包一份：
+#   config.yml       本文件，全局项
+#   menu.yml         菜单（menu 包）
+#   sign.yml         每日签到（sign 包）
+#   online.yml       在线时长奖励（online 包）
+#   clean.yml        自动扫地（clean 包）
+#   trashbin.yml     垃圾桶（trashbin 包）
+#   flight.yml       付费飞行（flight 包）
+#   chair.yml        椅子（chair 包）
+#   achievement.yml  进度奖励（achievement 包）
+#   messages.yml     所有面向玩家的文案
+#
+# 每个功能文件都有 enabled 开关；关掉后该模块完全停用
+# （不注册监听器 / 命令 / 占位符，菜单中也不再出现入口）。
+# 修改后执行 /sfp reload 或重启服务器生效。
+#
+# 注意：本文件的旧字段（flight / floor-clean / daily-sign /
+# online-reward / achievement）已迁移到对应模块文件，保留仅为兼容，
+# 实际生效值请到各自文件中修改。
+# ==========================================================
+
+# 调试模式：开启后在控制台输出更详细的运行日志
+debug: false
+
+# 货币显示名称（用于文案中的 {currency} 占位符，经济系统本身仍由 Vault 提供）
+currency-name: "星原币"
+
+# 旧版菜单标题位置（兼容保留，新配置请用 menu.yml 的 title）
+menu-title: "<rainbow><b><i>星落平原 菜单</i></b></rainbow>"

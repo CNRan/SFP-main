@@ -1,0 +1,63 @@
+# ==========================================================
+# 传送系统（teleport 包）
+# ----------------------------------------------------------
+# 包含三个功能：/back（返回上一位置）、/home（个人家）、/warp（公共传送点）
+# 数据全部存储在 SQLite 数据库（teleport.db），位于插件数据目录下。
+# 文案在 messages.yml 的 teleport.* / home.* / warp.* / back.* 中修改。
+# ==========================================================
+
+# 总开关：false 则完全停用传送系统（命令、菜单入口、监听器全部不注册）
+enabled: true
+
+# ---------- 数据库 ----------
+database:
+  # SQLite 数据库文件名（相对插件数据目录）
+  file: "teleport.db"
+  # 是否在每次写操作后立即提交（true 更安全，false 性能略高）
+  auto-commit: true
+
+# ---------- /back 返回 ----------
+back:
+  enabled: true
+  # 允许返回的场景：玩家死亡后是否记录死亡点
+  record-death: true
+  # 玩家传送前是否记录原位置（用于连续 /back 回溯）
+  record-teleport: true
+  # 玩家切换世界时是否记录
+  record-world-change: true
+  # 玩家退出游戏时是否记录当前位置（勾选后下次登录仍可 /back）
+  record-quit: false
+
+# ---------- /home 个人家 ----------
+home:
+  enabled: true
+  # 每位玩家可设置的家数量上限（-1 表示无限制；OP 可绕过上限）
+  max-homes: 5
+  # 设置家的冷却（秒）
+  set-cooldown-seconds: 5
+  # 传送冷却（秒）
+  teleport-cooldown-seconds: 3
+
+# ---------- /warp 公共传送点 ----------
+warp:
+  enabled: true
+  # 设置传送点所需权限（留空表示所有玩家都可以创建）
+  set-permission: "sfpmenu.warp.set"
+  # 删除传送点所需权限（留空表示所有玩家都可以删除）
+  delete-permission: "sfpmenu.warp.delete"
+  # 传送冷却（秒）
+  teleport-cooldown-seconds: 3
+
+# ---------- 传送通用 ----------
+teleport:
+  # 是否允许跨世界传送（false 时只能在本世界内传送到同名世界的位置）
+  allow-cross-world: true
+  # 传送前的等待时间（秒），0 = 立即传送
+  # 大于 0 时：先提示玩家，等待期间移动（跨越方块）或再次传送会打断本次传送
+  delay-seconds: 0
+  # 传送时是否播放音效（音效名见 util/SoundUtil）
+  sound: "ENTITY_ENDERMAN_TELEPORT"
+  # 是否使用安全落点（自动寻找上方/下方合适位置，避免卡在方块里）
+  safe-location: true
+  # 安全落点向下搜索的最大距离
+  safe-search-distance: 5

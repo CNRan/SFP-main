@@ -1,0 +1,44 @@
+# ==========================================================
+# 自动扫地（clean 包）
+# 文案在 messages.yml 的 clean.* 中修改
+# ==========================================================
+
+# 总开关：false 则完全停用扫地（不注册占位符，菜单入口不受影响）
+enabled: true
+
+# 清扫周期（秒），默认 900 = 15 分钟；最低 60 秒
+cycle-seconds: 900
+
+# 清扫前的倒计时提醒（秒），到点向全服广播警告
+warn-seconds: [60, 30, 10]
+
+# 生效世界范围
+worlds:
+  # 白名单：非空时只清扫这些世界（世界名，如 world、world_nether）
+  whitelist: []
+  # 黑名单：永不清扫这些世界（优先级高于白名单）
+  blacklist: []
+  # 是否只处理已加载的区块（Paper 下实体遍历本身只含已加载区块，通常保持 false）
+  only-loaded-chunks: false
+
+# 有自定义名称的物品（改名物品）是否跳过不扫（防止误清玩家命名物品）
+skip-named-items: true
+
+# 清扫物是否送入垃圾桶
+#   true  = 收入垃圾桶，玩家可用 /trashbin 取回（推荐）
+#   false = 直接删除，不经过垃圾桶（不可恢复，慎用）
+to-trashbin: true
+
+# 广播开关
+broadcast:
+  # 是否广播清扫前倒计时提醒
+  reminders: true
+  # 是否广播清扫完成结果
+  result: true
+
+# PAPI 占位符 %stf_cleantime% 的颜色阈值（秒）
+placeholder:
+  # 剩余时间大于该值显示绿色
+  safe-threshold-seconds: 180
+  # 剩余时间大于该值（小于 safe）显示黄色，否则红色
+  warn-threshold-seconds: 60

@@ -1,0 +1,114 @@
+# ==========================================================
+# 面向玩家的文案（messages.yml）
+# ----------------------------------------------------------
+# 1) 同时支持 MiniMessage 标签（<red>、<gradient:...>）与传统色码（&a、§a）。
+# 2) 可用占位符（花括号）：{player} {count} {time} {page} {pages} {total}
+#    {name} {desc} {icon} 等，按具体消息说明使用。
+# 3) 删除某条即可回退到插件内置默认文案。
+# 4) 多行消息请使用列表形式（以 - 开头，每行一条）。
+# ==========================================================
+
+# ---------- 通用 ----------
+common:
+  no-permission: "<red>你没有权限使用此命令！</red>"
+  player-only: "<red>该命令只能由玩家执行。</red>"
+  feature-disabled: "<red>该功能当前未启用。</red>"
+  reload-success: "<green>[星落平原] 配置已重载。</green>"
+  reload-failed: "<red>[星落平原] 重载失败。</red>"
+  unknown-subcommand: "<red>未知子命令，用法：/sfp reload</red>"
+
+# ---------- 扫地（clean 包）----------
+clean:
+  # 清扫前提醒，{seconds} 为剩余秒数
+  reminder: "<!i><yellow>[扫地] 还有 {seconds} 秒将清扫地面掉落物，请及时拾取！</yellow>"
+  # 清扫完成广播
+  result: "<!i><green>[扫地] 已清扫 {count} 个掉落物并收入垃圾桶。</green> <yellow>请在下次清扫前打开垃圾桶取回重要物品！</yellow> <gray>下次清扫将在 {time} 后。</gray>"
+  result-button: "<!i><yellow><click:run_command:'/trashbin'>[打开垃圾桶]</click></yellow>"
+  # 不进入垃圾桶、直接删除时的提示
+  result-deleted: "<!i><green>[扫地] 已清理 {count} 个掉落物。</green> <gray>下次清扫将在 {time} 后。</gray>"
+  result-button-hover: "<!i><gray>点击打开垃圾桶取回物品</gray>"
+
+# ---------- 垃圾桶（trashbin 包）----------
+trashbin:
+  title: "<!i><dark_gray>垃圾桶</dark_gray> <gray>- 第 {page}/{pages} 页</gray>"
+  prev: "<!i><yellow>上一页</yellow>"
+  next: "<!i><yellow>下一页</yellow>"
+  first: "<!i><dark_gray>首页</dark_gray>"
+  last: "<!i><dark_gray>末页</dark_gray>"
+  info-name: "<!i><aqua>垃圾桶信息</aqua>"
+  info-lore:
+    - "<!i><gray>当前页： <white>{page}/{pages}</white></gray>"
+    - "<!i><gray>物品总数： <white>{total}</white></gray>"
+    - "<!i><gray>点击物品即可取回</gray>"
+  taken: "<green>已从垃圾桶取回物品。</green>"
+  disabled: "<red>垃圾桶系统未启用。</red>"
+
+# ---------- 椅子（chair 包）----------
+chair:
+  sit: "<green>你坐下了。潜行或再次右键座位可以站起来。</green>"
+  occupied: "<yellow>这个座位已经有人了！</yellow>"
+
+# ---------- 传送通用（teleport 包）----------
+teleport:
+  storage-error: "<red>传送数据库不可用，请联系管理员。</red>"
+  world-missing: "<red>目标世界不存在或已被卸载。</red>"
+  failed: "<red>传送失败。</red>"
+  # {seconds} 剩余冷却秒数
+  cooldown: "<red>传送冷却中，请等待 {seconds} 秒。</red>"
+  # {seconds} 延迟传送等待秒数（teleport.delay-seconds > 0 时）
+  delayed: "<yellow>将在 {seconds} 秒后传送，移动将打断。</yellow>"
+  cancelled: "<red>传送已取消（位置发生变化）。</red>"
+  prev: "<!i><yellow>上一页</yellow>"
+  next: "<!i><yellow>下一页</yellow>"
+  first: "<!i><dark_gray>首页</dark_gray>"
+  last: "<!i><dark_gray>末页</dark_gray>"
+
+# ---------- 返回（/back）----------
+back:
+  # {location} 目标坐标
+  success: "<green>已返回上一位置（{location}）。</green>"
+  no-location: "<red>没有可返回的位置。</red>"
+
+# ---------- 个人家（/home）----------
+home:
+  title: "<!i><aqua>我的家</aqua> <gray>- 第 {page}/{pages} 页</gray>"
+  info-name: "<!i><aqua>家列表信息</aqua>"
+  info-lore:
+    - "<!i><gray>当前页： <white>{page}/{pages}</white></gray>"
+    - "<!i><gray>家总数： <white>{total}</white></gray>"
+    - "<!i><gray>左键传送 / 右键删除</gray>"
+  # {name} 家名；{location} 坐标
+  set-success: "<green>已设置家「{name}」（{location}）。</green>"
+  set-cooldown: "<red>设置家冷却中，请等待 {seconds} 秒。</red>"
+  del-success: "<green>已删除家「{name}」。</green>"
+  teleport-success: "<green>已传送到家「{name}」。</green>"
+  not-found: "<red>不存在名为「{name}」的家。</red>"
+  none: "<yellow>你还没有设置任何家。</yellow>"
+  invalid-name: "<red>家名只能包含字母、数字、下划线，长度 1~16。</red>"
+  limit-reached: "<red>你的家数量已达上限（{max} 个），请先删除一些。</red>"
+  usage-delhome: "<red>用法：/delhome <名称></red>"
+  list-header: "<aqua>你的家（{count}）：</aqua>"
+  list-entry: "<gray> - </gray><white>{name}</white> <dark_gray>({location})</dark_gray>"
+
+# ---------- 公共传送点（/warp）----------
+warp:
+  title: "<!i><light_purple>传送点</light_purple> <gray>- 第 {page}/{pages} 页</gray>"
+  info-name: "<!i><light_purple>传送点信息</light_purple>"
+  info-lore:
+    - "<!i><gray>当前页： <white>{page}/{pages}</white></gray>"
+    - "<!i><gray>传送点总数： <white>{total}</white></gray>"
+    - "<!i><gray>左键传送 / 右键删除</gray>"
+  set-success: "<green>已创建传送点「{name}」（{location}）。</green>"
+  del-success: "<green>已删除传送点「{name}」。</green>"
+  teleport-success: "<green>已传送到「{name}」。</green>"
+  not-found: "<red>不存在名为「{name}」的传送点。</red>"
+  none: "<yellow>当前没有任何传送点。</yellow>"
+  invalid-name: "<red>传送点名只能包含字母、数字、下划线，长度 1~16。</red>"
+  usage-setwarp: "<red>用法：/setwarp <名称></red>"
+  usage-delwarp: "<red>用法：/delwarp <名称></red>"
+  list-header: "<aqua>传送点（{count}）：</aqua>"
+  list-entry: "<gray> - </gray><white>{name}</white> <dark_gray>({location})</dark_gray>"
+
+# ---------- 菜单（menu 包）----------
+menu:
+  head-name: "<!i><yellow>{player}</yellow>"
