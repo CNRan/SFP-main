@@ -84,26 +84,24 @@ buttons:
       - "<gray>回到上次传送前或死亡的位置</gray>"
     command: ""
 
-  # 个人家（内部动作，打开家列表）
+  # 个人家（内部动作，打开家列表；删除在家列表里操作）
   home:
     enabled: true
     slot: 21
     material: RED_BED
     name: "<red>我的家</red>"
     lore:
-      - "<gray>查看并传送到已设置的家</gray>"
-      - "<gray>左键传送 / 右键删除</gray>"
+      - "<gray>打开家列表，查看并传送到你的家</gray>"
     command: ""
 
-  # 公共传送点（内部动作，打开传送点列表）
+  # 公共传送点（内部动作，打开传送点列表；传送点由管理员管理）
   warp:
     enabled: true
     slot: 23
     material: ENDER_EYE
     name: "<light_purple>传送点</light_purple>"
     lore:
-      - "<gray>查看并传送到服务器传送点</gray>"
-      - "<gray>左键传送 / 右键删除</gray>"
+      - "<gray>打开传送点列表，快速前往服务器各处</gray>"
     command: ""
 
   # 垃圾桶（受 trashbin.yml 总开关控制）
@@ -126,16 +124,14 @@ buttons:
       - "<gray>管理你的领地</gray>"
     command: "dom"
 
-  # 玩家传送（打开「选择传送目标」界面，用箱子里的玩家头颅选人）
+  # 玩家传送（打开「选择传送目标」界面）
   tpa:
     enabled: true
     slot: 31
     material: COMPASS
     name: "<aqua>玩家传送</aqua>"
     lore:
-      - "<gray>选择一个在线玩家作为传送目标</gray>"
-      - "<gray>左键：请求传送到他身边</gray>"
-      - "<gray>右键：请求他传送到你身边</gray>"
+      - "<gray>选择一个在线玩家，再选择传送方向</gray>"
     command: ""
 
   # 坐下休息说明（只读展示；实际交互为告示牌 + 右键方块）

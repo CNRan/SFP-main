@@ -27,8 +27,8 @@ import java.util.List;
  * {@link TeleportManager#teleportHome} / {@link TeleportManager#teleportWarp}，
  * 与命令、箱子 UI 行为一致。
  * <p>
- * 注意：dialogUI 的按钮没有「左右键」之分，因此列表只提供「点击 = 传送」这一主动作，
- * 删除请用 {@code /delhome} / {@code /delwarp}（箱子 UI 保留左键传送 / 右键删除）。
+ * 家列表的条目点击后会再弹「传送 / 删除」选择框（dialogUI 按钮无左右键，
+ * 用两步交互补上删除），传送点条目直接传送。
  */
 public final class DialogTeleportList {
 

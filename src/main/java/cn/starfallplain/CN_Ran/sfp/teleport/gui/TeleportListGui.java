@@ -177,7 +177,7 @@ public final class TeleportListGui {
             List<String> rawLore = plugin.getRawMessageList(loreKey,
                     List.of("<!i><gray>当前页： <white>{page}/{pages}</white></gray>",
                             "<!i><gray>条目总数： <white>{total}</white></gray>",
-                            "<!i><gray>左键传送 / 右键删除</gray>"));
+                            "<!i><gray>左键传送</gray>"));
             List<Component> lore = new ArrayList<>(rawLore.size());
             for (String line : rawLore) {
                 lore.add(Messages.deserialize(Messages.apply(line, ph)));
