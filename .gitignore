@@ -15,3 +15,7 @@ dependency-reduced-pom.xml
 # 运行期数据
 *.db
 *.log
+
+# Python（scripts/ 下的检查脚本）
+__pycache__/
+*.pyc

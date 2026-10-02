@@ -1,0 +1,43 @@
+name: 语法检查
+
+# 每次推送后自动跑一遍；也可以在 Actions 页面手动触发
+on:
+  push:
+  workflow_dispatch:
+
+# 只需要读代码，不需要写权限
+permissions:
+  contents: read
+
+jobs:
+  syntax-check:
+    name: 编译 + 配置校验
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 检出代码
+        uses: actions/checkout@v4
+
+      - name: 准备 JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+          # 缓存 ~/.m2，加快后续构建
+          cache: maven
+
+      - name: 准备 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: 安装 PyYAML
+        run: python -m pip install --quiet --disable-pip-version-check pyyaml
+
+      # 放在编译前面：配置文件写坏了就没必要再等一次完整构建
+      - name: 校验 YAML 语法（插件配置 + 工作流文件）
+        run: python scripts/check_yaml.py
+
+      # 这一步同时覆盖：Java 语法、pom 依赖能否解析、shade 能否正常打包
+      - name: 编译打包
+        run: mvn -B -ntp clean package
