@@ -1,5 +1,6 @@
 package cn.starfallplain.CN_Ran.sfp.config;
 
+import cn.starfallplain.CN_Ran.sfp.config.module.BotConfig;
 import cn.starfallplain.CN_Ran.sfp.config.module.ChairConfig;
 import cn.starfallplain.CN_Ran.sfp.config.module.CleanConfig;
 import cn.starfallplain.CN_Ran.sfp.config.module.MenuConfig;
@@ -39,6 +40,7 @@ public final class ConfigManager {
     private TrashBinConfig trashBinConfig;
     private ChairConfig chairConfig;
     private TeleportConfig teleportConfig;
+    private BotConfig botConfig;
 
     public ConfigManager(JavaPlugin plugin) {
         this.plugin = plugin;
@@ -56,6 +58,7 @@ public final class ConfigManager {
         trashBinConfig = new TrashBinConfig(plugin);
         chairConfig = new ChairConfig(plugin);
         teleportConfig = new TeleportConfig(plugin);
+        botConfig = new BotConfig(plugin);
     }
 
     /** 重载所有配置（含 messages） */
@@ -76,6 +79,7 @@ public final class ConfigManager {
         lines.add(flagLine("垃圾桶", trashBinConfig.isEnabled(), true));
         lines.add(flagLine("椅子", chairConfig.isEnabled(), true));
         lines.add(flagLine("传送（/back /home /warp /tpa）", teleportConfig.isEnabled(), true));
+        lines.add(flagLine("假人（/bot）", botConfig.isEnabled(), true));
         lines.add("  · 扫地倒计时 PAPI 占位符：" + (papiAvailable ? "可用" : "不可用（缺少 PlaceholderAPI）"));
         return lines;
     }
@@ -118,5 +122,9 @@ public final class ConfigManager {
 
     public TeleportConfig teleport() {
         return teleportConfig;
+    }
+
+    public BotConfig bot() {
+        return botConfig;
     }
 }

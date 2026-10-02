@@ -371,6 +371,11 @@ public final class SelfTest {
                 : (tpa.isEnabled()
                         ? "<white>待处理请求 " + tpa.pendingCount() + " 笔</white>"
                         : "<dark_gray>已关闭（teleport.yml 的 tpa.enabled）</dark_gray>")));
+
+        cn.starfallplain.CN_Ran.sfp.bot.BotManager bot = plugin.getBotManager();
+        DbDebug.send(sender, "<gray>  · 假人（/bot）：</gray>" + (bot == null
+                ? "<dark_gray>未启动</dark_gray>"
+                : "<white>" + bot.size() + " 个（已加入 " + bot.onlineCount() + "）</white>"));
     }
 
     // ==================== 工具 ====================

@@ -68,3 +68,6 @@ permissions:
   sfpmenu.admin:
     description: 允许使用 /sfp 管理命令（重载配置）
     default: op
+  sfpmenu.bot:
+    description: 允许使用 /bot 假人命令（创建会保持区块加载的假人）
+    default: op

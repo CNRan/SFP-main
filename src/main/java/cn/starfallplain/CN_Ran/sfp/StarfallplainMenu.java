@@ -1,5 +1,7 @@
 package cn.starfallplain.CN_Ran.sfp;
 
+import cn.starfallplain.CN_Ran.sfp.bot.BotCommand;
+import cn.starfallplain.CN_Ran.sfp.bot.BotManager;
 import cn.starfallplain.CN_Ran.sfp.chair.ChairListener;
 import cn.starfallplain.CN_Ran.sfp.chair.ChairManager;
 import cn.starfallplain.CN_Ran.sfp.clean.CleanTimePlaceholder;
@@ -49,6 +51,8 @@ public final class StarfallplainMenu extends JavaPlugin {
     private TeleportManager teleportManager;
     /** 玩家间传送请求（/tpa /tpahere /tpaccept /tpdeny），随传送系统一同创建 */
     private TpaManager tpaManager;
+    /** 假人（/bot）：真玩家实体，用于保持区块加载 */
+    private BotManager botManager;
 
     @Override
     public void onEnable() {
@@ -62,6 +66,7 @@ public final class StarfallplainMenu extends JavaPlugin {
         setupFloorClean();
         setupChair();
         setupTeleport();
+        setupBot();
         setupMenu();
 
         // 3) 注册命令（依赖上面已建好的各管理器，故放在最后）
@@ -93,6 +98,11 @@ public final class StarfallplainMenu extends JavaPlugin {
         if (tpaManager != null) {
             tpaManager.shutdown();
         }
+        // 保存假人记录（假人实体本身随服务端关闭而消失，下次启动按记录重建）
+        if (botManager != null) {
+            botManager.saveData();
+            botManager.shutdown();
+        }
         getLogger().info("Starfallplain Menu 已禁用！");
     }
 
@@ -118,6 +128,10 @@ public final class StarfallplainMenu extends JavaPlugin {
 
             // 传送命令
             registerTeleportCommands(registrar);
+
+            // 假人：/bot create|remove|list|removeall
+            registrar.register("bot", "假人管理（创建/删除/列表；假人会保持所在区块加载）",
+                    new BotCommand(this));
 
             // 管理 / 调试命令 /sfp：reload / status / db / test
             registrar.register("sfp", "星落平原管理命令（输入 /sfp 查看用法）", new SfpCommand(this));
@@ -243,6 +257,22 @@ public final class StarfallplainMenu extends JavaPlugin {
                 + (tpaManager.isEnabled() ? " /tpa /tpahere" : "") + "，数据存储于 SQLite）。");
     }
 
+    /**
+     * 假人（/bot）：创建真玩家实体用于保持区块加载。
+     * <p>
+     * 假人的重建放在下一 tick 而不是 onEnable 里同步做：加入玩家会触发服务端的一整套
+     * 加入流程，让它在插件启用栈之外执行更稳妥（此时世界已加载完毕，满足重建条件）。
+     */
+    private void setupBot() {
+        if (!configManager.bot().isEnabled()) {
+            getLogger().info("假人：已按配置关闭。");
+            return;
+        }
+        botManager = new BotManager(this, configManager);
+        getServer().getScheduler().runTask(this, () -> botManager.restoreOnStart());
+        getLogger().info("假人系统已启动（/bot create <名字>）。");
+    }
+
     private void setupPlaceholders(boolean papiOk) {
         if (!papiOk) {
             getLogger().warning("PlaceholderAPI 未安装，扫地倒计时占位符不可用。");
@@ -311,5 +341,10 @@ public final class StarfallplainMenu extends JavaPlugin {
     /** 玩家传送请求管理器；传送系统关闭时为 null */
     public TpaManager getTpaManager() {
         return tpaManager;
+    }
+
+    /** 假人管理器；bot.yml 关闭时为 null */
+    public BotManager getBotManager() {
+        return botManager;
     }
 }

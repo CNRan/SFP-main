@@ -163,6 +163,23 @@ tpa:
     - "<!i><green>左键</green><gray> 请求传送到他身边</gray>"
     - "<!i><red>右键</red><gray> 请求他传送到你身边</gray>"
 
+# ---------- 假人（/bot）----------
+bot:
+  created: "<green>已创建假人「{name}」（{location}），它会保持所在区块加载。</green>"
+  removed: "<green>已移除假人「{name}」。</green>"
+  removed-all: "<green>已移除全部假人（{count} 个）。</green>"
+  not-found: "<red>不存在名为「{name}」的假人。</red>"
+  exists: "<red>已存在名为「{name}」的假人。</red>"
+  invalid-name: "<red>假人名字只能包含字母、数字、下划线，长度 1~{max}。</red>"
+  limit-reached: "<red>你创建的假人已达上限（{max} 个），可先用 /bot remove 删掉一些。</red>"
+  create-failed: "<red>创建假人失败：{error}</red>"
+  world-not-found: "<red>找不到世界「{world}」。</red>"
+  bad-coords: "<red>坐标格式不正确，应为数字。</red>"
+  need-coords: "<red>控制台执行时必须给出坐标：/bot create <名字> <世界> <x> <y> <z></red>"
+  list-header: "<aqua>假人（{count}）：</aqua>"
+  list-empty: "<yellow>当前没有假人。</yellow>"
+  list-entry: "<gray> - </gray><white>{name}</white> <dark_gray>({world} {x}, {y}, {z}) {state}</dark_gray>"
+
 # ---------- 菜单（menu 包）----------
 menu:
   head-name: "<!i><yellow>{player}</yellow>"
