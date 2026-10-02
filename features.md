@@ -8,7 +8,8 @@
 > 文末的「新增功能检查清单」是要照着走一遍的。
 
 - 插件形态：Paper 插件（`paper-plugin.yml`），Java 25，编译目标 paper-api 26.3
-- 主类：`cn.starfallplain.CN_Ran.sfp.StarfallplainMenu`
+- 插件名（`name`）：`SFP-main` —— 决定日志前缀与数据目录（`plugins/SFP-main/`）
+- 主类：`cn.starfallplain.CN_Ran.sfp.StarfallplainMenu`（类名/包名仍是旧的 StarfallplainMenu，与 name 无关）
 - 元信息文件：`src/main/resources/paper-plugin.yml`（`version` 由 `${version}` 过滤）
 
 ---
@@ -80,7 +81,8 @@ Paper 插件不支持 `plugin.yml` 的 `commands` 段，全部命令在
 - 模块被关闭时同名命令**仍然注册**，统一回「该功能当前未启用」，避免玩家以为命令不存在。
 
 已注册命令：`menu`(别名 `m`)、`trashbin`、`back`、`home`、`sethome`、`delhome`、`homes`、
-`warp`、`setwarp`、`delwarp`、`warps`、`tpa`、`tpahere`、`tpaccept`、`tpdeny`、`bot`、`sfp`。
+`warp`、`setwarp`、`delwarp`、`warps`、`tpa`、`tpahere`、`tpaccept`、`tpdeny`、`bot`、
+`menuui`、`sfp`。
 
 ### 0.4 权限节点（`paper-plugin.yml` 的 `permissions` 段）
 
@@ -164,6 +166,13 @@ MenuCommand#execute
 
 两种界面**共用** `MenuManager.activeButtons / resolveAction / runAction / canOpen`，
 因此按钮内容与点击结果完全一致；`MenuListener` 已经薄化成「关界面 → `runAction`」。
+
+**列表类界面也已 dialogUI 化**（1.3/1.4/1.5）：
+- `ui/DialogTeleportList` —— 家列表 / 传送点列表共用的弹窗版（一页 6 条 + 上一页/返回/下一页翻页，翻页重开弹窗），点击条目传送
+- `ui/DialogTpaTarget` —— 在线玩家选择弹窗版，点击发起 `/tpa`
+- 二者与箱子 UI 一样按偏好分流（`MenuManager.openHomeList / openWarpList / openTpaTarget`）
+- **dialogUI 按钮无左右键**，列表只保留「点击 = 传送 / 发起 tpa」主动作；删除用 `/delhome /delwarp`、`tpahere` 用 `/tpahere`（箱子 UI 保留右键）
+
 垃圾桶（需要取物品）保持箱子 UI，不做 dialogUI。
 
 ---
@@ -172,41 +181,48 @@ MenuCommand#execute
 
 数据存 SQLite（`teleport.db`），会话态（tpa）存内存。详见 §7。
 
-### 2.1 传送内核 `TeleportManager#teleport(player, target, crossWorldAllowed)`
+### 2.1 传送内核 `TeleportManager#teleport(player, target)`
 
-所有传送（back/home/warp/tpa/GUI 点击）都走这里，保证行为一致：
+所有传送（back/home/warp/tpa/GUI 点击 / dialogUI 列表）都走这里，保证行为一致：
 
 ```
-1) target == null                   → false
-2) !target.worldExists()            → false（世界不存在/未加载）
-3) !crossWorldAllowed && !allow-cross-world 且世界名不同 → false
-     ⚠️ 六个调用点全部传 true，所以 teleport.yml 的 allow-cross-world 实际不生效（见 §9）
-4) safe-location: true → findSafeLocation()
+1) target == null / !worldExists()   → false（世界不存在/未加载）
+2) safe-location: true → findSafeLocation()
      要求：脚下是实心方块 + 身位与头部可通行；从原坐标上下交替搜索，最多 safe-search-distance 格
-5) delay-seconds <= 0 → executeTeleport() 立即执行
-   否则 → startDelayedTeleport()：先静默取消该玩家已有的等待 → 提示 {seconds}
-          → runTaskLater → 到点二次校验世界仍存在 → executeTeleport
-6) executeTeleport（两种方式共用）：
+3) delay-seconds <= 0 → executeTeleport() 立即执行
+   否则 → startDelayedTeleport()（见下）
+4) executeTeleport：
      back.enabled && back.record-teleport → 记录「传送前位置」为 /back 目标
      markInternalTeleport()（1 秒窗口，见 2.2）
      player.teleport(dest)
-     播放 teleport.sound（默认 ENTITY_ENDERMAN_TELEPORT）
+     播放 teleport.sounds.teleport（默认 ENTITY_ENDERMAN_TELEPORT）
 ```
 
-**延迟传送的打断条件**（`TeleportListener` / `TeleportManager#handleMove`）：
+**延迟传送（delay-seconds 默认 3 秒）**：`startDelayedTeleport()` 逐秒执行 ——
+- 开始时：提示 {seconds} + 播放 `teleport.sounds.start`（BLOCK_NOTE_BLOCK_PLING）
+- 每秒：脚下刷 PORTAL 粒子（`particle-interval-ticks` 控制频率）+ 播放 `teleport.sounds.tick`（BLOCK_NOTE_BLOCK_HAT）
+- 最后 1 秒：异步 `getChunkAtAsync` 预加载目标那**一个**区块（不加 ticket，传完自然卸载）
+- 到点：二次校验世界仍存在 → executeTeleport
+
+**延迟传送的打断条件**（`TeleportListener` / `TeleportManager`）：
 - 玩家**跨越方块坐标**（同一方块内的转头/微位移不算）
+- 玩家**受到任何伤害**（`EntityDamageEvent` → `cancelOnDamage`，提示区别于移动打断）
 - 任何**非本插件**发起的传送（`PlayerTeleportEvent` 且 cause≠PLUGIN 或不在内部标记窗口内）
 - 玩家退出、插件卸载时取消全部等待任务
 
 **冷却**：`getCooldownRemaining() / applyTeleportCooldown()` 由**调用方**决定是否使用。
 `/back` 不检查也不施加冷却；home/warp/tpa 各自有冷却。
 
+**传送到家/传送点的统一入口**：`teleportHome(player, name)` / `teleportWarp(player, name)`
+把「存在性 / 世界 / 冷却 / 传送 / 提示」的完整逻辑抽到 TeleportManager，
+命令、箱子 GUI、dialogUI 三处只调这一个方法，保证行为一致。
+
 ### 2.2 `/back`（`BackCommand`）
 
 ```
 权限 sfpmenu.teleport → back.enabled → isStorageAvailable()
 → 从 last_locations 读该玩家记录 → worldExists() 校验
-→ manager.teleport(player, target, true) → back.success
+→ manager.teleport(player, target) → back.success
 ```
 
 **记录时机**（`TeleportListener` + `TeleportManager`，各由 teleport.yml 的 `back.*` 控制）：
@@ -541,14 +557,15 @@ SQLite 的 `ALTER TABLE` 限制：只能加列 / 改列名 / 删列（3.35+）�
 
 ## 9. 已知未生效 / 预留的配置项
 
-| 配置项 | 现状 |
+以下五项曾在代码中「定义了但没人用」，**2.5.0 已全部删除**（配置键 + 代码访问器 + 引用一并清理）：
+
+| 配置项 | 原状态 |
 |---|---|
-| `teleport.allow-cross-world` | **实际不生效**：内核只在 `!crossWorldAllowed && !allowCrossWorld` 时拦截，而 back/home/warp/tpa 六个调用点全部传 `true` |
-| `chair.stand-on.sneak` | 无代码引用：潜行起身是靠 `EntityDismountEvent` **无条件**处理的，设 false 也关不掉 |
-| `clean.worlds.only-loaded-chunks` | 无代码引用（Paper 下实体遍历本身只含已加载区块） |
-| `trashbin.global` | 无代码引用：按玩家隔离垃圾桶尚未实现，当前恒为全服共享 |
-| `config.yml` 的 `currency-name` | `GlobalConfig#getCurrencyName()` 无调用点；扫地广播是直接读 `plugin.getConfig()` 取同名键 |
-| `bots.yml` 的 owner 字段 | 仅用于统计「每位玩家创建了几个」，不参与鉴权 |
+| `teleport.allow-cross-world` | 内核条件被六个传 `true` 的调用点短路，永不生效（删除后 `teleport()` 签名也去掉了 `crossWorldAllowed` 参数） |
+| `chair.stand-on.sneak` | 无引用；潜行起身实为 `EntityDismountEvent` 无条件处理 |
+| `clean.worlds.only-loaded-chunks` | 无引用 |
+| `trashbin.global` | 无引用；按玩家隔离未实现 |
+| `config.yml` 的 `currency-name` | `GlobalConfig#getCurrencyName()` 无调用点，扫地广播的 `{currency}` 占位符也是死代码 |
 
 ## 10. 新增功能检查清单
 
