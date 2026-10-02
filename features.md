@@ -81,7 +81,7 @@ Paper 插件不支持 `plugin.yml` 的 `commands` 段，全部命令在
 - 模块被关闭时同名命令**仍然注册**，统一回「该功能当前未启用」，避免玩家以为命令不存在。
 
 已注册命令：`menu`(别名 `m`)、`trashbin`、`back`、`home`、`sethome`、`delhome`、`homes`、
-`warp`、`setwarp`、`delwarp`、`warps`、`tpa`、`tpahere`、`tpaccept`、`tpdeny`、`bot`、
+`warp`、`setwarp`、`delwarp`、`warps`、`tpa`、`tpahere`、`tpaccept`、`tpdeny`、`tpaui`、`bot`、
 `menuui`、`sfp`。
 
 ### 0.4 权限节点（`paper-plugin.yml` 的 `permissions` 段）
@@ -267,11 +267,12 @@ MenuCommand#execute
 - 传送流程：存在 → `worldExists()` → 冷却(`warp.teleport-cooldown-seconds`) → `teleport()`。
 - 传送点全服共享，`warps` 表主键是 `warp_name`。
 
-### 2.5 `/tpa` `/tpahere` `/tpaccept` `/tpdeny`（`TpaManager` + `TpaCommand`）
+### 2.5 `/tpa` `/tpahere` `/tpaccept` `/tpdeny` `/tpaui`（`TpaManager` + `TpaCommand`）
 
-**会话态，不入库**（重启即失效；进库反而要处理过期清理）。
+**请求会话态不入库**（重启即失效；进库反而要处理过期清理）；
+**界面偏好入库**（`settings.db` 的 `tpa_ui_preferences`，见 §7）。
 
-`TpaCommand`（四个标签一个类，`action` 区分）统一前置：
+`TpaCommand`（五个标签一个类，`action` 区分）统一前置：
 玩家 → `sfpmenu.teleport` → `tpa.enabled`。
 
 **发起**（`/tpa 名字` = 我去他那 / `/tpahere 名字` = 让他来我这）：
@@ -282,15 +283,21 @@ request(from, target, type)
   3) 该接收者已有请求 → 移除旧的（取消其过期任务）并通知被取代的发起者
   4) 登记 pending[target] = (from, fromName, targetName, type, expireAt, task)
      并 runTaskLater(expire-seconds)：到点若仍在 → 移除 + 通知双方已过期
-  5) 通道 ①：target.showDialog(...) —— Paper Dialog 原生弹窗（DialogType.confirmation）
-     通道 ②：聊天里发一条带可点击 [接受]/[拒绝] 的消息 + 一行「手打命令」提示
+  5) deliver(target, ...)：按**接收者自己**的界面偏好二选一
+       DIALOG → 弹窗（multiAction：接受 / 拒绝 / 切换界面）+ 一行「手打命令」兜底
+       TUI    → 聊天里带可点 [接受]/[拒绝]/[切换为弹窗] 的消息 + 手打提示
   6) 给发起者回执
 ```
 
-**为什么两个通道都给**（刻意的冗余）：Dialog 是较新的客户端能力，服务器装了
-ViaVersion/ViaBackwards/ViaRewind，低版本客户端可能渲染不出弹窗；弹窗坏了聊天按钮还能点；
-两个按钮都失效还能手打命令。**三条路径最终都执行 `/tpaccept`、`/tpdeny`**——
-弹窗按钮是 `DialogAction.staticAction(ClickEvent.runCommand("/tpaccept 名字"))`。
+**回应界面形式可切换（偏好存数据库）**：`/tpaui` 命令，或直接点界面里的
+「切换界面」（弹窗）/「[切换为弹窗]」（聊天）按钮 —— 三者都走 `TpaManager#switchUi`：
+切换 `tpa_ui_preferences`（`dialog` / `tui`，默认 `dialog`），并**立即用新形式重发**
+当前待处理的那笔请求。该偏好**独立于**主菜单的 dialogUI/箱子偏好（`ui_preferences`）。
+
+**兜底**：Dialog 是较新的客户端能力，服务器装了 ViaVersion/ViaBackwards/ViaRewind，
+低版本客户端可能渲染不出弹窗，所以弹窗形式下也附一行「手打命令」提示；
+任何形式都能用 `/tpaccept` `/tpdeny` 响应 —— **所有按钮最终都执行这两个命令**
+（弹窗按钮是 `DialogAction.staticAction(ClickEvent.runCommand("/tpaccept 名字"))`）。
 
 **接受**（`accept`）：
 ```
@@ -472,7 +479,7 @@ PlayerList#placeNewPlayer(connection, player, cookie)            ← 服务端�
 | 存储 | 文件 | 存放内容 | 代码 |
 |---|---|---|---|
 | SQLite | `teleport.db` | `homes` / `warps` / `last_locations` | `Database` + 三个 Store |
-| SQLite | `settings.db` | `ui_preferences`（界面样式偏好） | `UiPreferenceStore` |
+| SQLite | `settings.db` | `ui_preferences`（界面样式偏好）、`tpa_ui_preferences`（传送回应界面偏好） | `UiPreferenceStore` |
 | YAML | `trashbin-data.yml` | 垃圾桶物品列表 | `TrashBinManager` |
 | YAML | `bots.yml` | 假人记录（用于重启重建） | `BotManager` |
 | 内存 | — | tpa 请求、传送冷却、延迟传送队列、在座玩家 | 各 Manager |
