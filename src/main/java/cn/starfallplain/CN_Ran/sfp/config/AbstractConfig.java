@@ -20,6 +20,14 @@ import java.util.List;
  * <p>
  * 子类通过 {@link #getString(String)} 等 get* 方法读取自身文件的键；
  * 键既可用带前缀的完整路径（menu.sign.slot），也可用不含文件名前缀的短路径（sign.slot）。
+ * <p>
+ * <b>注意——初始化顺序</b>：构造器里就会调用 {@link #load()} → {@link #onLoaded()}，
+ * 而 Java 是在 {@code super(...)} 返回<b>之后</b>才执行子类的字段初始化器。
+ * 因此 {@link #onLoaded()} 中不得依赖子类的字段初始化器，例如
+ * <pre>{@code private final Map<String, X> map = new HashMap<>();}</pre>
+ * —— 那一刻该字段仍是 {@code null}（会 NPE），而且初始化器随后还会把
+ * {@code onLoaded()} 填好的内容覆盖成空集合。集合类字段请在
+ * {@link #onLoaded()} 内部自行 {@code new}。
  */
 public abstract class AbstractConfig {
 

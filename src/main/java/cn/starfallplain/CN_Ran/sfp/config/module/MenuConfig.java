@@ -76,7 +76,12 @@ public final class MenuConfig extends AbstractConfig {
     private List<Material> borderMaterials;
 
     // 按钮
-    private final Map<String, Button> buttons = new LinkedHashMap<>();
+    // 注意：这里**不要**写成 `= new LinkedHashMap<>()`。
+    // Java 是在 super(...) 返回之后才执行子类字段初始化器的，而 onLoaded() 恰恰是从
+    // AbstractConfig 的构造器里调用的 —— 那一刻本字段还是 null，会直接 NPE；
+    // 即便绕开 NPE，初始化器随后也会把 onLoaded() 填好的内容覆盖成空表。
+    // 因此改为在 onLoaded() 内部新建。
+    private Map<String, Button> buttons;
 
     // 垃圾桶按钮 id（用于绑定模块开关）
     private String trashBinButtonId;
@@ -119,7 +124,9 @@ public final class MenuConfig extends AbstractConfig {
         openPermission = getString("permission", "sfpmenu.player");
         permissionMessage = getString("permission-message", "你没有权限使用此命令");
 
-        buttons.clear();
+        // 每次加载都重建：既规避构造期的字段初始化顺序问题（见字段声明处注释），
+        // 也保证 reload 时不残留上一次的按钮
+        buttons = new LinkedHashMap<>();
         var section = raw().getConfigurationSection(normalize("buttons"));
         if (section != null) {
             for (String id : section.getKeys(false)) {
