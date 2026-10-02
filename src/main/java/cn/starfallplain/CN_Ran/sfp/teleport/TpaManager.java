@@ -4,7 +4,7 @@ import cn.starfallplain.CN_Ran.sfp.StarfallplainMenu;
 import cn.starfallplain.CN_Ran.sfp.config.Messages;
 import cn.starfallplain.CN_Ran.sfp.config.module.TeleportConfig;
 import cn.starfallplain.CN_Ran.sfp.teleport.db.StoredLocation;
-import cn.starfallplain.CN_Ran.sfp.ui.UiMode;
+import cn.starfallplain.CN_Ran.sfp.ui.TpaUiMode;
 import cn.starfallplain.CN_Ran.sfp.ui.UiPreferenceStore;
 import io.papermc.paper.dialog.Dialog;
 import io.papermc.paper.registry.data.dialog.ActionButton;
@@ -150,16 +150,8 @@ public final class TpaManager {
                 type, now + expire * 1000L, task));
         requestCooldowns.put(from.getUniqueId(), now + config.getTpaRequestCooldownSeconds() * 1000L);
 
-        // 按接收者的界面偏好选择响应方式：
-        //   dialogUI → 弹窗（附一行手打命令兜底）；箱子/TUI → 聊天里的可点击按钮
-        UiPreferenceStore store = plugin.getUiPreferenceStore();
-        UiMode mode = store != null ? store.get(target.getUniqueId()) : UiMode.DIALOG;
-        if (mode == UiMode.DIALOG) {
-            showDialog(target, from, type);
-            sendManualTip(target, from, expire);
-        } else {
-            sendChatUi(target, from, type, expire);
-        }
+        // 交付请求：按接收者自己的「传送回应界面」偏好（dialog / tui）
+        deliver(target, from, type, expire);
 
         // 回执给发起者
         Map<String, String> ph = new HashMap<>();
@@ -197,13 +189,21 @@ public final class TpaManager {
                 .action(DialogAction.staticAction(ClickEvent.runCommand("/tpdeny " + from.getName())))
                 .build();
 
+        // 第三个按钮：切换回应界面形式（dialog ↔ tui），偏好存 settings.db
+        ActionButton switchBtn = ActionButton.builder(
+                        Messages.deserialize(messages.raw("tpa.dialog-switch", "<!i><yellow>切换界面</yellow>")))
+                .tooltip(Messages.deserialize(messages.raw("tpa.dialog-switch-hover",
+                        "<!i><gray>改用聊天里的按钮来回应</gray>")))
+                .action(DialogAction.staticAction(ClickEvent.runCommand("/tpaui")))
+                .build();
+
         Dialog dialog = Dialog.create(builder -> builder
                 .empty()
                 .base(DialogBase.builder(title)
                         .canCloseWithEscape(true)
                         .body(List.of(DialogBody.plainMessage(body)))
                         .build())
-                .type(DialogType.confirmation(accept, deny)));
+                .type(DialogType.multiAction(List.of(accept, deny, switchBtn)).columns(3).build()));
 
         target.showDialog(dialog);
     }
@@ -229,8 +229,14 @@ public final class TpaManager {
                 .hoverEvent(HoverEvent.showText(Messages.deserialize(
                         messages.raw("tpa.dialog-deny-hover", "<!i><gray>拒绝这次传送</gray>"))));
 
+        Component switchBtn = Messages.deserialize(
+                        messages.raw("tpa.tui-switch", "<!i><yellow>[切换为弹窗]</yellow>"))
+                .clickEvent(ClickEvent.runCommand("/tpaui"))
+                .hoverEvent(HoverEvent.showText(Messages.deserialize(
+                        messages.raw("tpa.tui-switch-hover", "<!i><gray>改用弹窗来回应</gray>"))));
         target.sendMessage(text.append(Component.space()).append(accept)
-                .append(Component.space()).append(deny));
+                .append(Component.space()).append(deny)
+                .append(Component.space()).append(switchBtn));
         target.sendMessage(Messages.deserialize(Messages.apply(
                 messages.raw("tpa.tui-tip",
                         "<!i><dark_gray>（上面的按钮点不动时，手动输入：/tpaccept {from} 或 /tpdeny {from}）</dark_gray>"),
@@ -244,6 +250,50 @@ public final class TpaManager {
                 messages.raw("tpa.tui-tip",
                         "<!i><dark_gray>（弹窗按钮点不动时，手动输入：/tpaccept {from} 或 /tpdeny {from}）</dark_gray>"),
                 Map.of("from", from.getName(), "seconds", String.valueOf(expireSeconds)))));
+    }
+
+    /** 按接收者的「传送回应界面」偏好交付请求 */
+    private void deliver(Player target, Player from, Type type, int expireSeconds) {
+        if (tpaUiMode(target) == TpaUiMode.DIALOG) {
+            showDialog(target, from, type);
+            sendManualTip(target, from, expireSeconds);
+        } else {
+            sendChatUi(target, from, type, expireSeconds);
+        }
+    }
+
+    /** 读取玩家的传送回应界面偏好 */
+    private TpaUiMode tpaUiMode(Player player) {
+        UiPreferenceStore store = plugin.getUiPreferenceStore();
+        return store != null ? store.getTpaMode(player.getUniqueId()) : TpaUiMode.DIALOG;
+    }
+
+    /**
+     * 切换「传送回应界面」形式（dialog ↔ tui），偏好存 settings.db。
+     * <p>
+     * 若该玩家当前正好有一笔待处理的请求，会立刻用新形式重新发一遍
+     * （弹窗里的「切换界面」按钮、聊天里的「[切换为弹窗]」都走这里）。
+     */
+    public void switchUi(Player player) {
+        UiPreferenceStore store = plugin.getUiPreferenceStore();
+        if (store == null) return;
+
+        TpaUiMode next = store.getTpaMode(player.getUniqueId()).toggle();
+        store.setTpaMode(player.getUniqueId(), next);
+
+        Map<String, String> ph = new HashMap<>();
+        ph.put("mode", next == TpaUiMode.DIALOG ? "弹窗界面" : "聊天按钮界面");
+        plugin.getConfigManager().messages().send(player, "tpa.ui-switched",
+                "<green>传送请求的回应界面已切换为：{mode}。</green>", ph);
+
+        // 有待处理的请求 → 立即用新形式重发
+        Pending pending = this.pending.get(player.getUniqueId());
+        if (pending == null) return;
+        Player from = Bukkit.getPlayer(pending.from());
+        if (from == null) return;
+        int remaining = (int) Math.max(1,
+                (pending.expireAt() - System.currentTimeMillis()) / 1000);
+        deliver(player, from, pending.type(), remaining);
     }
 
     // ==================== 响应请求 ====================

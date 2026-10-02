@@ -152,7 +152,7 @@ public final class StarfallplainMenu extends JavaPlugin {
 
     /**
      * 注册传送命令（/back /home /sethome /delhome /homes /warp /setwarp /delwarp /warps
-     * 以及 /tpa /tpahere /tpaccept /tpdeny）。
+     * 以及 /tpa /tpahere /tpaccept /tpdeny /tpaui）。
      * <p>
      * {@code BackCommand} 等实现的是 {@link BasicCommand}，拿不到命令标签，
      * 因此 Home / Warp / Tpa 系列由构造参数区分动作，每个标签各注册一个实例。
@@ -166,7 +166,7 @@ public final class StarfallplainMenu extends JavaPlugin {
                     getMessage("common.feature-disabled", "<red>该功能当前未启用。</red>"));
             for (String label : new String[]{"back", "home", "sethome", "delhome", "homes",
                     "warp", "setwarp", "delwarp", "warps",
-                    "tpa", "tpahere", "tpaccept", "tpdeny"}) {
+                    "tpa", "tpahere", "tpaccept", "tpdeny", "tpaui"}) {
                 registrar.register(label, "传送功能（当前未启用）", disabled);
             }
             return;
@@ -195,7 +195,7 @@ public final class StarfallplainMenu extends JavaPlugin {
         registrar.register("warps", "列出所有公共传送点",
                 new WarpCommand(this, teleportManager, "warps"));
 
-        // /tpa /tpahere /tpaccept /tpdeny
+        // /tpa /tpahere /tpaccept /tpdeny /tpaui
         registrar.register("tpa", "请求传送到某玩家身边",
                 new TpaCommand(this, tpaManager, "tpa"));
         registrar.register("tpahere", "请求某玩家传送到你身边",
@@ -204,6 +204,8 @@ public final class StarfallplainMenu extends JavaPlugin {
                 new TpaCommand(this, tpaManager, "tpaccept"));
         registrar.register("tpdeny", "拒绝传送请求",
                 new TpaCommand(this, tpaManager, "tpdeny"));
+        registrar.register("tpaui", "切换传送请求的回应界面（弹窗 / 聊天按钮）",
+                new TpaCommand(this, tpaManager, "tpaui"));
     }
 
     private void setupTrashBin() {

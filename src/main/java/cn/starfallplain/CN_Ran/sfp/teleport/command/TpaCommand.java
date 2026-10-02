@@ -16,18 +16,21 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * /tpa、/tpahere、/tpaccept、/tpdeny —— 玩家间传送请求。
+ * /tpa、/tpahere、/tpaccept、/tpdeny、/tpaui —— 玩家间传送请求。
  * <p>
- * {@link BasicCommand} 拿不到命令标签，所以四个标签各注册一个本类实例，用构造参数 {@code action} 区分动作。
+ * {@link BasicCommand} 拿不到命令标签，所以每个标签各注册一个本类实例，用构造参数 {@code action} 区分动作。
  * <p>
  * 注意「接受 / 拒绝」也做成命令而不是纯界面回调：聊天 TUI 的按钮、弹窗界面的按钮、手动输入
  * 三条路径最终都落到这两个命令上，行为完全一致，也不会出现「界面按钮坏了就彻底没法响应」的情况。
+ * <p>
+ * {@code /tpaui} 切换「回应界面」形式（弹窗 / 聊天按钮），偏好存 settings.db；
+ * 回应界面里的「切换界面」按钮执行的就是它。
  */
 public class TpaCommand implements BasicCommand {
 
     private final StarfallplainMenu plugin;
     private final TpaManager tpaManager;
-    /** 动作：tpa / tpahere / tpaccept / tpdeny */
+    /** 动作：tpa / tpahere / tpaccept / tpdeny / tpaui */
     private final String action;
 
     public TpaCommand(StarfallplainMenu plugin, TpaManager tpaManager, String action) {
@@ -57,6 +60,7 @@ public class TpaCommand implements BasicCommand {
             case "tpahere" -> request(player, args, TpaManager.Type.HERE);
             case "tpaccept" -> tpaManager.accept(player, args.length > 0 ? args[0] : null);
             case "tpdeny" -> tpaManager.deny(player, args.length > 0 ? args[0] : null);
+            case "tpaui" -> tpaManager.switchUi(player);
             default -> player.sendMessage(plugin.getMessage("common.unknown-subcommand",
                     "<red>未知子命令。</red>"));
         }

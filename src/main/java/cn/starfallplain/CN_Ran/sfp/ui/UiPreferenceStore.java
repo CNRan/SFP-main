@@ -35,6 +35,10 @@ public final class UiPreferenceStore {
                 st.execute("CREATE TABLE IF NOT EXISTS ui_preferences ("
                         + "player_uuid TEXT PRIMARY KEY,"
                         + "ui_mode TEXT NOT NULL DEFAULT 'dialogui')");
+                // 传送请求「回应界面」的形式偏好（dialog / tui），与主菜单偏好相互独立
+                st.execute("CREATE TABLE IF NOT EXISTS tpa_ui_preferences ("
+                        + "player_uuid TEXT PRIMARY KEY,"
+                        + "ui_mode TEXT NOT NULL DEFAULT 'dialog')");
             }
         } catch (Exception e) {
             plugin.getLogger().warning("无法打开 settings.db，界面偏好将退回默认值（dialogUI）："
@@ -69,6 +73,35 @@ public final class UiPreferenceStore {
             ps.executeUpdate();
         } catch (SQLException e) {
             plugin.getLogger().warning("保存界面偏好失败：" + e.getMessage());
+        }
+    }
+
+    /** 读取「传送回应界面」偏好；没有记录或读失败都返回默认 DIALOG */
+    public TpaUiMode getTpaMode(UUID uuid) {
+        if (connection == null) return TpaUiMode.DIALOG;
+        try (PreparedStatement ps = connection.prepareStatement(
+                "SELECT ui_mode FROM tpa_ui_preferences WHERE player_uuid = ?")) {
+            ps.setString(1, uuid.toString());
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) return TpaUiMode.fromKey(rs.getString("ui_mode"));
+            }
+        } catch (SQLException e) {
+            plugin.getLogger().warning("读取传送界面偏好失败：" + e.getMessage());
+        }
+        return TpaUiMode.DIALOG;
+    }
+
+    /** 保存「传送回应界面」偏好 */
+    public void setTpaMode(UUID uuid, TpaUiMode mode) {
+        if (connection == null) return;
+        try (PreparedStatement ps = connection.prepareStatement(
+                "INSERT INTO tpa_ui_preferences (player_uuid, ui_mode) VALUES (?, ?) "
+                        + "ON CONFLICT(player_uuid) DO UPDATE SET ui_mode = excluded.ui_mode")) {
+            ps.setString(1, uuid.toString());
+            ps.setString(2, mode.key());
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            plugin.getLogger().warning("保存传送界面偏好失败：" + e.getMessage());
         }
     }
 

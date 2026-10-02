@@ -127,6 +127,12 @@ tpa:
   # 聊天 TUI（同一条消息里的按钮 + 手动输入提示）
   tui-accept: "<!i><click:run_command:'/tpaccept {from}'><green>[接受]</green></click>"
   tui-deny: "<!i><click:run_command:'/tpdeny {from}'><red>[拒绝]</red></click>"
+  # 回应界面里的「切换界面形式」按钮（偏好存 settings.db，切换后立即用新形式重发当前请求）
+  dialog-switch: "<!i><yellow>切换界面</yellow>"
+  dialog-switch-hover: "<!i><gray>改用聊天里的按钮来回应</gray>"
+  tui-switch: "<!i><yellow>[切换为弹窗]</yellow>"
+  tui-switch-hover: "<!i><gray>改用弹窗来回应</gray>"
+  ui-switched: "<green>传送请求的回应界面已切换为：{mode}。</green>"
   tui-tip: "<!i><dark_gray>（上面的按钮点不动时，手动输入：/tpaccept {from} 或 /tpdeny {from}）</dark_gray>"
   # 请求正文：{from} 为发起者名字
   request-to: "<!i><yellow>{from}</yellow> <gray>请求传送到你身边</gray>"
