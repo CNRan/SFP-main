@@ -99,7 +99,7 @@ public class TeleportGuiListener implements Listener {
             player.sendMessage(plugin.getMessage("common.feature-disabled", "<red>该功能当前未启用。</red>"));
             return;
         }
-        StoredLocation target = manager.getStore().getHome(player.getUniqueId(), name);
+        StoredLocation target = manager.getHomeStore().get(player.getUniqueId(), name);
         if (target == null) {
             Map<String, String> ph = new HashMap<>();
             ph.put("name", name);
@@ -129,7 +129,7 @@ public class TeleportGuiListener implements Listener {
     }
 
     private void handleHomeDelete(Player player, String name) {
-        if (!manager.getStore().deleteHome(player.getUniqueId(), name)) {
+        if (!manager.getHomeStore().delete(player.getUniqueId(), name)) {
             Map<String, String> ph = new HashMap<>();
             ph.put("name", name);
             plugin.getConfigManager().messages().send(player, "home.not-found",
@@ -152,7 +152,7 @@ public class TeleportGuiListener implements Listener {
             player.sendMessage(plugin.getMessage("common.feature-disabled", "<red>该功能当前未启用。</red>"));
             return;
         }
-        StoredLocation target = manager.getStore().getWarp(name);
+        StoredLocation target = manager.getWarpStore().get(name);
         if (target == null) {
             Map<String, String> ph = new HashMap<>();
             ph.put("name", name);
@@ -187,7 +187,7 @@ public class TeleportGuiListener implements Listener {
             player.sendMessage(plugin.getMessage("common.no-permission", "<red>你没有权限使用此命令！</red>"));
             return;
         }
-        if (!manager.getStore().deleteWarp(name)) {
+        if (!manager.getWarpStore().delete(name)) {
             Map<String, String> ph = new HashMap<>();
             ph.put("name", name);
             plugin.getConfigManager().messages().send(player, "warp.not-found",

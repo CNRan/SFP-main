@@ -52,7 +52,7 @@ public class BackCommand implements BasicCommand {
             return;
         }
 
-        StoredLocation target = manager.getStore().getLastLocation(player.getUniqueId());
+        StoredLocation target = manager.getBackStore().get(player.getUniqueId());
         if (target == null) {
             player.sendMessage(plugin.getMessage("back.no-location", "<red>没有可返回的位置。</red>"));
             return;

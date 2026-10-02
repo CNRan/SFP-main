@@ -106,7 +106,7 @@ public class WarpCommand implements BasicCommand {
         }
 
         StoredLocation loc = StoredLocation.of(player.getLocation());
-        if (loc == null || !manager.getStore().saveWarp(name, loc)) {
+        if (loc == null || !manager.getWarpStore().save(name, loc)) {
             player.sendMessage(plugin.getMessage("teleport.failed", "<red>保存失败，请稍后重试。</red>"));
             return true;
         }
@@ -131,7 +131,7 @@ public class WarpCommand implements BasicCommand {
             return true;
         }
         String name = args[0];
-        if (!manager.getStore().deleteWarp(name)) {
+        if (!manager.getWarpStore().delete(name)) {
             Map<String, String> ph = new HashMap<>();
             ph.put("name", name);
             plugin.getConfigManager().messages().send(player, "warp.not-found",
@@ -146,7 +146,7 @@ public class WarpCommand implements BasicCommand {
     }
 
     private boolean listWarps(Player player) {
-        List<String> names = manager.getStore().listWarpNames();
+        List<String> names = manager.getWarpStore().listNames();
         if (names.isEmpty()) {
             player.sendMessage(plugin.getMessage("warp.none", "<yellow>当前没有任何传送点。</yellow>"));
             return true;
@@ -156,7 +156,7 @@ public class WarpCommand implements BasicCommand {
         plugin.getConfigManager().messages().send(player, "warp.list-header",
                 "<aqua>传送点（{count}）：</aqua>", headerPh);
         for (String name : names) {
-            StoredLocation loc = manager.getStore().getWarp(name);
+            StoredLocation loc = manager.getWarpStore().get(name);
             Map<String, String> ph = new HashMap<>();
             ph.put("name", name);
             ph.put("location", loc != null ? loc.describe() : "?");
@@ -167,7 +167,7 @@ public class WarpCommand implements BasicCommand {
     }
 
     private boolean teleportWarp(Player player, String name) {
-        StoredLocation target = manager.getStore().getWarp(name);
+        StoredLocation target = manager.getWarpStore().get(name);
         if (target == null) {
             Map<String, String> ph = new HashMap<>();
             ph.put("name", name);
@@ -213,7 +213,7 @@ public class WarpCommand implements BasicCommand {
         // 仅 /warp 与 /delwarp 需要补全传送点名
         if (args.length == 1 && (action.equals("warp") || action.equals("delwarp"))) {
             String prefix = args[0].toLowerCase();
-            for (String name : manager.getStore().listWarpNames()) {
+            for (String name : manager.getWarpStore().listNames()) {
                 if (name.toLowerCase().startsWith(prefix)) result.add(name);
             }
         }

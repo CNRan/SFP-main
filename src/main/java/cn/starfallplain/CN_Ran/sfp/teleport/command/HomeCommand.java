@@ -108,8 +108,8 @@ public class HomeCommand implements BasicCommand {
         }
 
         int max = config.getHomeMaxHomes();
-        boolean isNew = manager.getStore().getHome(player.getUniqueId(), name) == null;
-        if (isNew && max >= 0 && manager.getStore().countHomes(player.getUniqueId()) >= max
+        boolean isNew = manager.getHomeStore().get(player.getUniqueId(), name) == null;
+        if (isNew && max >= 0 && manager.getHomeStore().count(player.getUniqueId()) >= max
                 && !player.hasPermission("sfpmenu.home.bypass-limit")) {
             Map<String, String> ph = new HashMap<>();
             ph.put("max", String.valueOf(max));
@@ -119,7 +119,7 @@ public class HomeCommand implements BasicCommand {
         }
 
         StoredLocation loc = StoredLocation.of(player.getLocation());
-        if (loc == null || !manager.getStore().saveHome(player.getUniqueId(), name, loc)) {
+        if (loc == null || !manager.getHomeStore().save(player.getUniqueId(), name, loc)) {
             player.sendMessage(plugin.getMessage("teleport.failed", "<red>保存失败，请稍后重试。</red>"));
             return true;
         }
@@ -140,7 +140,7 @@ public class HomeCommand implements BasicCommand {
             return true;
         }
         String name = args[0];
-        if (!manager.getStore().deleteHome(player.getUniqueId(), name)) {
+        if (!manager.getHomeStore().delete(player.getUniqueId(), name)) {
             Map<String, String> ph = new HashMap<>();
             ph.put("name", name);
             plugin.getConfigManager().messages().send(player, "home.not-found",
@@ -155,7 +155,7 @@ public class HomeCommand implements BasicCommand {
     }
 
     private boolean listHomes(Player player) {
-        List<String> names = manager.getStore().listHomeNames(player.getUniqueId());
+        List<String> names = manager.getHomeStore().listNames(player.getUniqueId());
         if (names.isEmpty()) {
             player.sendMessage(plugin.getMessage("home.none", "<yellow>你还没有设置任何家。</yellow>"));
             return true;
@@ -165,7 +165,7 @@ public class HomeCommand implements BasicCommand {
         plugin.getConfigManager().messages().send(player, "home.list-header",
                 "<aqua>你的家（{count}）：</aqua>", headerPh);
         for (String name : names) {
-            StoredLocation loc = manager.getStore().getHome(player.getUniqueId(), name);
+            StoredLocation loc = manager.getHomeStore().get(player.getUniqueId(), name);
             Map<String, String> ph = new HashMap<>();
             ph.put("name", name);
             ph.put("location", loc != null ? loc.describe() : "?");
@@ -176,7 +176,7 @@ public class HomeCommand implements BasicCommand {
     }
 
     private boolean teleportHome(Player player, String name) {
-        StoredLocation target = manager.getStore().getHome(player.getUniqueId(), name);
+        StoredLocation target = manager.getHomeStore().get(player.getUniqueId(), name);
         if (target == null) {
             Map<String, String> ph = new HashMap<>();
             ph.put("name", name);
@@ -224,7 +224,7 @@ public class HomeCommand implements BasicCommand {
         // 仅 /home 与 /delhome 需要补全家名
         if (args.length == 1 && (action.equals("home") || action.equals("delhome"))) {
             String prefix = args[0].toLowerCase();
-            for (String name : manager.getStore().listHomeNames(player.getUniqueId())) {
+            for (String name : manager.getHomeStore().listNames(player.getUniqueId())) {
                 if (name.toLowerCase().startsWith(prefix)) result.add(name);
             }
         }

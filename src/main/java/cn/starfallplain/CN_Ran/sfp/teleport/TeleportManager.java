@@ -2,9 +2,11 @@ package cn.starfallplain.CN_Ran.sfp.teleport;
 
 import cn.starfallplain.CN_Ran.sfp.StarfallplainMenu;
 import cn.starfallplain.CN_Ran.sfp.config.module.TeleportConfig;
+import cn.starfallplain.CN_Ran.sfp.teleport.db.BackStore;
 import cn.starfallplain.CN_Ran.sfp.teleport.db.Database;
-import cn.starfallplain.CN_Ran.sfp.teleport.db.LocationStore;
+import cn.starfallplain.CN_Ran.sfp.teleport.db.HomeStore;
 import cn.starfallplain.CN_Ran.sfp.teleport.db.StoredLocation;
+import cn.starfallplain.CN_Ran.sfp.teleport.db.WarpStore;
 import cn.starfallplain.CN_Ran.sfp.util.SoundUtil;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -23,7 +25,7 @@ import java.util.UUID;
  * <p>
  * 统一负责：
  * <ul>
- *   <li>SQLite 数据层（{@link Database} + {@link LocationStore}）的生命周期</li>
+ *   <li>SQLite 数据层（{@link Database} + 三个领域 Store）的生命周期</li>
  *   <li>/back 位置记录（死亡、传送前、切换世界、退出）</li>
  *   <li>实际传送（含安全落点、冷却、音效、跨世界判定）</li>
  *   <li>延迟传送（teleport.delay-seconds &gt; 0 时等待并支持移动打断）</li>
@@ -35,7 +37,10 @@ public final class TeleportManager {
     private final StarfallplainMenu plugin;
     private final TeleportConfig config;
     private final Database database;
-    private final LocationStore store;
+    /** 三张表按领域拆开，共用一个 Database（连接与表结构只有一份） */
+    private final HomeStore homeStore;
+    private final WarpStore warpStore;
+    private final BackStore backStore;
 
     /** 传送冷却：玩家 UUID → 冷却结束时间（毫秒） */
     private final Map<UUID, Long> teleportCooldowns = new HashMap<>();
@@ -62,20 +67,30 @@ public final class TeleportManager {
         this.plugin = plugin;
         this.config = config;
         this.database = new Database(plugin, config.getDbFile(), config.isAutoCommit());
-        this.store = new LocationStore(plugin, database);
+        this.homeStore = new HomeStore(plugin, database);
+        this.warpStore = new WarpStore(plugin, database);
+        this.backStore = new BackStore(plugin, database);
     }
 
     public TeleportConfig getConfig() {
         return config;
     }
 
-    public LocationStore getStore() {
-        return store;
+    public HomeStore getHomeStore() {
+        return homeStore;
     }
 
-    /** 数据层是否可用 */
+    public WarpStore getWarpStore() {
+        return warpStore;
+    }
+
+    public BackStore getBackStore() {
+        return backStore;
+    }
+
+    /** 数据层是否可用（三个 Store 共用同一个连接，判断一次即可） */
     public boolean isStorageAvailable() {
-        return store.isAvailable();
+        return database.isAvailable();
     }
 
     /** 关闭数据库连接（插件卸载时调用） */
@@ -133,7 +148,7 @@ public final class TeleportManager {
         if (!config.isBackEnabled()) return;
         StoredLocation loc = StoredLocation.of(player.getLocation());
         if (loc != null) {
-            store.saveLastLocation(player.getUniqueId(), loc);
+            backStore.save(player.getUniqueId(), loc);
         }
     }
 
@@ -142,7 +157,7 @@ public final class TeleportManager {
         if (!config.isBackEnabled()) return;
         StoredLocation loc = StoredLocation.of(location);
         if (loc != null) {
-            store.saveLastLocation(player.getUniqueId(), loc);
+            backStore.save(player.getUniqueId(), loc);
         }
     }
 

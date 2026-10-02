@@ -44,8 +44,8 @@ public final class TeleportListGui {
     public static void open(StarfallplainMenu plugin, Player player, TeleportManager manager,
                             TeleportListHolder.ListType type, int page) {
         List<String> allNames = type == TeleportListHolder.ListType.HOME
-                ? manager.getStore().listHomeNames(player.getUniqueId())
-                : manager.getStore().listWarpNames();
+                ? manager.getHomeStore().listNames(player.getUniqueId())
+                : manager.getWarpStore().listNames();
 
         int pageSize = 45;
         int pageCount = Math.max(1, (allNames.size() + pageSize - 1) / pageSize);
@@ -82,8 +82,8 @@ public final class TeleportListGui {
             String name = pageNames.get(i);
             if (name == null) continue;
             StoredLocation loc = type == TeleportListHolder.ListType.HOME
-                    ? manager.getStore().getHome(player.getUniqueId(), name)
-                    : manager.getStore().getWarp(name);
+                    ? manager.getHomeStore().get(player.getUniqueId(), name)
+                    : manager.getWarpStore().get(name);
             inv.setItem(i, createEntry(name, loc, icon));
         }
 
