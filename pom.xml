@@ -95,6 +95,20 @@
                             <transformers>
                                 <!-- 保留并合并 META-INF/services，保证 DriverManager 能发现驱动 -->
                                 <transformer implementation="org.apache.maven.plugins.shade.resource.ServicesResourceTransformer"/>
+                                <!--
+                                  显式生成 MANIFEST.MF。
+                                  不加这个 transformer 时，项目 jar 与 sqlite-jdbc jar 各自带一份
+                                  META-INF/MANIFEST.MF，shade 会打印
+                                  "1 overlapping resource: META-INF/MANIFEST.MF" 警告
+                                  （实际取的是项目自己那份，不影响产物，但刷日志）。
+                                  交给 transformer 处理后该资源不再参与合并，警告消失，清单内容也可控。
+                                -->
+                                <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
+                                    <manifestEntries>
+                                        <Implementation-Title>${project.name}</Implementation-Title>
+                                        <Implementation-Version>${project.version}</Implementation-Version>
+                                    </manifestEntries>
+                                </transformer>
                             </transformers>
                             <filters>
                                 <filter>
@@ -105,6 +119,12 @@
                                         <exclude>META-INF/*.RSA</exclude>
                                         <exclude>META-INF/versions/9/module-info.class</exclude>
                                         <exclude>module-info.class</exclude>
+                                        <!--
+                                          每个 jar 都自带一份 MANIFEST.MF，两份相撞会让 shade 打印
+                                          "1 overlapping resource: META-INF/MANIFEST.MF" 警告。
+                                          这里全部排除，最终清单统一由上面的 ManifestResourceTransformer 生成。
+                                        -->
+                                        <exclude>META-INF/MANIFEST.MF</exclude>
                                     </excludes>
                                 </filter>
                             </filters>
