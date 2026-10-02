@@ -251,7 +251,7 @@ MenuCommand#execute
 |---|---|
 | `home` 无参 | `HomeListGui.open(...)` 打开家列表 |
 | `home <名>` | 取名 → 不存在提示 → `worldExists()` → 冷却(`home.teleport-cooldown-seconds`) → `teleport()` → 施加冷却 + 提示 |
-| `sethome [名]` | 设置冷却(`set-cooldown-seconds`) → 名字校验 `[A-Za-z0-9_]{1,16}` → **若是新家**校验上限（`max-homes`，`sfpmenu.home.bypass-limit` 可绕）→ `HomeStore#save` → 施加设置冷却 + 提示 |
+| `sethome [名]` | 设置冷却(`set-cooldown-seconds`) → 名字校验（`util/NameUtil`：**中文**/字母/数字/下划线，1~16）→ **若是新家**校验上限（`max-homes`，`sfpmenu.home.bypass-limit` 可绕）→ `HomeStore#save` → 施加设置冷却 + 提示 |
 | `delhome <名>` | `HomeStore#delete`，返回 false 说明不存在 |
 | `homes` | 逐条列出名字 + 坐标 |
 

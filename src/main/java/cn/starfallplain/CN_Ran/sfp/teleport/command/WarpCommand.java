@@ -5,6 +5,7 @@ import cn.starfallplain.CN_Ran.sfp.config.module.TeleportConfig;
 import cn.starfallplain.CN_Ran.sfp.teleport.TeleportManager;
 import cn.starfallplain.CN_Ran.sfp.teleport.db.StoredLocation;
 import cn.starfallplain.CN_Ran.sfp.teleport.gui.WarpListGui;
+import cn.starfallplain.CN_Ran.sfp.util.NameUtil;
 import io.papermc.paper.command.brigadier.BasicCommand;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import org.bukkit.command.CommandSender;
@@ -99,9 +100,9 @@ public class WarpCommand implements BasicCommand {
             return true;
         }
         String name = args[0];
-        if (!isValidName(name)) {
+        if (!NameUtil.isValidName(name)) {
             player.sendMessage(plugin.getMessage("warp.invalid-name",
-                    "<red>传送点名只能包含字母、数字、下划线，长度 1~16。</red>"));
+                    "<red>传送点名只能包含中文、字母、数字、下划线，长度 1~16。</red>"));
             return true;
         }
 
@@ -169,10 +170,6 @@ public class WarpCommand implements BasicCommand {
     private boolean teleportWarp(Player player, String name) {
         manager.teleportWarp(player, name);
         return true;
-    }
-
-    private boolean isValidName(String name) {
-        return name != null && name.matches("[A-Za-z0-9_]{1,16}");
     }
 
     @Override

@@ -5,6 +5,7 @@ import cn.starfallplain.CN_Ran.sfp.config.module.TeleportConfig;
 import cn.starfallplain.CN_Ran.sfp.teleport.TeleportManager;
 import cn.starfallplain.CN_Ran.sfp.teleport.db.StoredLocation;
 import cn.starfallplain.CN_Ran.sfp.teleport.gui.HomeListGui;
+import cn.starfallplain.CN_Ran.sfp.util.NameUtil;
 import io.papermc.paper.command.brigadier.BasicCommand;
 import io.papermc.paper.command.brigadier.CommandSourceStack;
 import org.bukkit.command.CommandSender;
@@ -101,9 +102,9 @@ public class HomeCommand implements BasicCommand {
         }
 
         String name = args.length > 0 ? args[0] : "home";
-        if (!isValidName(name)) {
+        if (!NameUtil.isValidName(name)) {
             player.sendMessage(plugin.getMessage("home.invalid-name",
-                    "<red>家名只能包含字母、数字、下划线，长度 1~16。</red>"));
+                    "<red>家名只能包含中文、字母、数字、下划线，长度 1~16。</red>"));
             return true;
         }
 
@@ -178,11 +179,6 @@ public class HomeCommand implements BasicCommand {
     private boolean teleportHome(Player player, String name) {
         manager.teleportHome(player, name);
         return true;
-    }
-
-    /** 家名合法性：1~16 位字母数字下划线 */
-    private boolean isValidName(String name) {
-        return name != null && name.matches("[A-Za-z0-9_]{1,16}");
     }
 
     @Override
