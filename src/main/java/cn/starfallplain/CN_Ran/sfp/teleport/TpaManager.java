@@ -4,6 +4,8 @@ import cn.starfallplain.CN_Ran.sfp.StarfallplainMenu;
 import cn.starfallplain.CN_Ran.sfp.config.Messages;
 import cn.starfallplain.CN_Ran.sfp.config.module.TeleportConfig;
 import cn.starfallplain.CN_Ran.sfp.teleport.db.StoredLocation;
+import cn.starfallplain.CN_Ran.sfp.ui.UiMode;
+import cn.starfallplain.CN_Ran.sfp.ui.UiPreferenceStore;
 import io.papermc.paper.dialog.Dialog;
 import io.papermc.paper.registry.data.dialog.ActionButton;
 import io.papermc.paper.registry.data.dialog.DialogBase;
@@ -148,10 +150,16 @@ public final class TpaManager {
                 type, now + expire * 1000L, task));
         requestCooldowns.put(from.getUniqueId(), now + config.getTpaRequestCooldownSeconds() * 1000L);
 
-        // 通道 1：弹窗界面
-        showDialog(target, from, type);
-        // 通道 2：聊天 TUI（同一条消息里给可点按钮 + 手动输入提示）
-        sendChatUi(target, from, type, expire);
+        // 按接收者的界面偏好选择响应方式：
+        //   dialogUI → 弹窗（附一行手打命令兜底）；箱子/TUI → 聊天里的可点击按钮
+        UiPreferenceStore store = plugin.getUiPreferenceStore();
+        UiMode mode = store != null ? store.get(target.getUniqueId()) : UiMode.DIALOG;
+        if (mode == UiMode.DIALOG) {
+            showDialog(target, from, type);
+            sendManualTip(target, from, expire);
+        } else {
+            sendChatUi(target, from, type, expire);
+        }
 
         // 回执给发起者
         Map<String, String> ph = new HashMap<>();
@@ -226,6 +234,15 @@ public final class TpaManager {
         target.sendMessage(Messages.deserialize(Messages.apply(
                 messages.raw("tpa.tui-tip",
                         "<!i><dark_gray>（上面的按钮点不动时，手动输入：/tpaccept {from} 或 /tpdeny {from}）</dark_gray>"),
+                Map.of("from", from.getName(), "seconds", String.valueOf(expireSeconds)))));
+    }
+
+    /** 弹窗之外的兜底：只发一行「手动输入命令」提示（弹窗按钮点不动时仍能响应） */
+    private void sendManualTip(Player target, Player from, int expireSeconds) {
+        Messages messages = plugin.getConfigManager().messages();
+        target.sendMessage(Messages.deserialize(Messages.apply(
+                messages.raw("tpa.tui-tip",
+                        "<!i><dark_gray>（弹窗按钮点不动时，手动输入：/tpaccept {from} 或 /tpdeny {from}）</dark_gray>"),
                 Map.of("from", from.getName(), "seconds", String.valueOf(expireSeconds)))));
     }
 

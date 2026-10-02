@@ -9,6 +9,7 @@ import io.papermc.paper.dialog.Dialog;
 import io.papermc.paper.registry.data.dialog.ActionButton;
 import io.papermc.paper.registry.data.dialog.DialogBase;
 import io.papermc.paper.registry.data.dialog.action.DialogAction;
+import io.papermc.paper.registry.data.dialog.body.DialogBody;
 import io.papermc.paper.registry.data.dialog.type.DialogType;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickCallback;
@@ -82,7 +83,7 @@ public final class DialogTeleportList {
             builder.action(DialogAction.customClick((view, audience) -> {
                 if (audience instanceof Player p && p.isOnline()) {
                     if (home) {
-                        manager.teleportHome(p, targetName);
+                        openHomeActionDialog(plugin, p, manager, targetName, options);
                     } else {
                         manager.teleportWarp(p, targetName);
                     }
@@ -117,6 +118,46 @@ public final class DialogTeleportList {
                         .canCloseWithEscape(true)
                         .build())
                 .type(DialogType.multiAction(buttons).columns(1).build()));
+
+        player.showDialog(dialog);
+    }
+
+    /**
+     * 点击家条目后弹出「传送 / 删除」选择框。
+     * <p>
+     * dialogUI 的按钮没有左右键之分，所以用两步交互补上「删除自己的家」，
+     * 与箱子 UI 的「左键传送 / 右键删除」功能对等。
+     */
+    private static void openHomeActionDialog(StarfallplainMenu plugin, Player player,
+                                             TeleportManager manager, String name,
+                                             ClickCallback.Options options) {
+        Component title = Messages.deserialize("<aqua>我的家</aqua>");
+        Component body = Messages.deserialize("<yellow>" + name + "</yellow> <gray>—— 选择操作</gray>");
+
+        ActionButton teleport = ActionButton.builder(Messages.deserialize("<green>传送</green>"))
+                .tooltip(Messages.deserialize("<gray>传送到这个家</gray>"))
+                .action(DialogAction.customClick((view, audience) -> {
+                    if (audience instanceof Player p && p.isOnline()) {
+                        manager.teleportHome(p, name);
+                    }
+                }, options))
+                .build();
+        ActionButton delete = ActionButton.builder(Messages.deserialize("<red>删除这个家</red>"))
+                .tooltip(Messages.deserialize("<gray>等同 /delhome " + name + "</gray>"))
+                .action(DialogAction.customClick((view, audience) -> {
+                    if (audience instanceof Player p && p.isOnline()) {
+                        manager.deleteHome(p, name);
+                    }
+                }, options))
+                .build();
+
+        Dialog dialog = Dialog.create(builder -> builder
+                .empty()
+                .base(DialogBase.builder(title)
+                        .canCloseWithEscape(true)
+                        .body(List.of(DialogBody.plainMessage(body)))
+                        .build())
+                .type(DialogType.confirmation(teleport, delete)));
 
         player.showDialog(dialog);
     }

@@ -6,9 +6,16 @@ import org.bukkit.Registry;
 import org.bukkit.Sound;
 import org.bukkit.entity.Player;
 
+import java.util.Locale;
+
 /**
- * 音效工具：把配置中的音效名（如 "ENTITY_PLAYER_LEVELUP" 或
- * "minecraft:entity.player.levelup"）解析为 Sound 并播放。
+ * 音效工具：把配置中的音效名解析为 {@link Sound} 并播放。
+ * <p>
+ * 支持两种写法：
+ * <ul>
+ *   <li>Bukkit 枚举名，如 {@code ENTITY_ENDERMAN_TELEPORT}、{@code BLOCK_NOTE_BLOCK_PLING}</li>
+ *   <li>注册名，如 {@code minecraft:entity.enderman.teleport}（点分隔）</li>
+ * </ul>
  * 名称无效或留空时静默跳过，不影响主流程。
  */
 public final class SoundUtil {
@@ -17,9 +24,17 @@ public final class SoundUtil {
     }
 
     /** 解析音效名，无效返回 null */
+    @SuppressWarnings("deprecation")
     public static Sound resolve(String name) {
         if (name == null || name.isBlank()) return null;
-        String key = name.trim().toLowerCase();
+        // 优先按 Bukkit 枚举名（配置文件里最常用这种写法）
+        try {
+            return Sound.valueOf(name.trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException ignored) {
+            // 不是枚举名，下面按注册名再试
+        }
+        // 注册名（注意是点分隔，如 minecraft:entity.enderman.teleport）
+        String key = name.trim().toLowerCase(Locale.ROOT);
         if (!key.contains(":")) {
             key = "minecraft:" + key;
         }

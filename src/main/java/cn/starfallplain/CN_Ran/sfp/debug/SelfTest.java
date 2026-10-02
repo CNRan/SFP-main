@@ -10,6 +10,7 @@ import cn.starfallplain.CN_Ran.sfp.menu.MenuManager;
 import cn.starfallplain.CN_Ran.sfp.teleport.TeleportManager;
 import cn.starfallplain.CN_Ran.sfp.teleport.db.Database;
 import cn.starfallplain.CN_Ran.sfp.trashbin.TrashBinManager;
+import cn.starfallplain.CN_Ran.sfp.util.SoundUtil;
 import org.bukkit.Bukkit;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
@@ -142,6 +143,26 @@ public final class SelfTest {
         } else {
             r.warn("messages.yml 缺少 " + missingKeys.size() + " 个键（会退回代码内置文案）："
                     + String.join(", ", missingKeys));
+        }
+
+        // 音效名有效性：resolve 返回 null 就是「无声」，是静默 bug 高发处
+        List<String> badSounds = new ArrayList<>();
+        checkSound(cm.teleport().getWaitStartSound(), "teleport.sounds.start", badSounds);
+        checkSound(cm.teleport().getWaitTickSound(), "teleport.sounds.tick", badSounds);
+        checkSound(cm.teleport().getTeleportSound(), "teleport.sounds.teleport", badSounds);
+        checkSound(cm.trashBin().getTakeSound(), "trashbin.sounds.take", badSounds);
+        if (badSounds.isEmpty()) {
+            r.ok("配置的音效名全部有效");
+        } else {
+            r.fail("以下音效名无法解析（会无声）：" + String.join(", ", badSounds));
+        }
+    }
+
+    /** 留空 = 静音（合法）；非空但解析失败 = 有问题 */
+    private static void checkSound(String name, String label, List<String> bad) {
+        if (name == null || name.isBlank()) return;
+        if (SoundUtil.resolve(name) == null) {
+            bad.add(label + "(" + name + ")");
         }
     }
 

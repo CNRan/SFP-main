@@ -78,13 +78,16 @@ public final class TeleportListGui {
 
         // 内容格
         Material icon = type == TeleportListHolder.ListType.HOME ? Material.RED_BED : Material.ENDER_PEARL;
+        String warpDeletePerm = manager.getConfig().getWarpDeletePermission();
+        boolean canDeleteWarp = warpDeletePerm == null || warpDeletePerm.isBlank()
+                || player.hasPermission(warpDeletePerm);
         for (int i = 0; i < pageSize; i++) {
             String name = pageNames.get(i);
             if (name == null) continue;
             StoredLocation loc = type == TeleportListHolder.ListType.HOME
                     ? manager.getHomeStore().get(player.getUniqueId(), name)
                     : manager.getWarpStore().get(name);
-            inv.setItem(i, createEntry(name, loc, icon));
+            inv.setItem(i, createEntry(player, type, name, loc, icon, canDeleteWarp));
         }
 
         // 导航行：上一页 / 灰板 / 返回 / 页码 / 灰板 / 下一页
@@ -120,7 +123,9 @@ public final class TeleportListGui {
                 plugin.getConfigManager().teleport().getTeleportSound(), 0.4f, 1.4f);
     }
 
-    private static ItemStack createEntry(String name, StoredLocation loc, Material icon) {
+    private static ItemStack createEntry(Player player, TeleportListHolder.ListType type,
+                                         String name, StoredLocation loc, Material icon,
+                                         boolean canDeleteWarp) {
         ItemStack item = ItemStack.of(icon, 1);
         ItemMeta meta = item.getItemMeta();
         if (meta != null) {
@@ -129,7 +134,13 @@ public final class TeleportListGui {
             lore.add(Messages.deserialize("<!i><gray>坐标： <white>"
                     + (loc != null ? loc.describe() : "?") + "</white></gray>"));
             lore.add(Messages.deserialize("<!i><green>左键</green><gray> 传送</gray>"));
-            lore.add(Messages.deserialize("<!i><red>右键</red><gray> 删除</gray>"));
+            if (type == TeleportListHolder.ListType.HOME) {
+                lore.add(Messages.deserialize("<!i><red>右键</red><gray> 删除</gray>"));
+            } else if (canDeleteWarp) {
+                lore.add(Messages.deserialize("<!i><red>右键</red><gray> 删除（管理员）</gray>"));
+            } else {
+                lore.add(Messages.deserialize("<!i><dark_gray>公共传送点，不可删除</dark_gray>"));
+            }
             meta.lore(lore);
             meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES, ItemFlag.HIDE_ENCHANTS);
             item.setItemMeta(meta);

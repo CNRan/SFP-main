@@ -8,6 +8,7 @@ import io.papermc.paper.dialog.Dialog;
 import io.papermc.paper.registry.data.dialog.ActionButton;
 import io.papermc.paper.registry.data.dialog.DialogBase;
 import io.papermc.paper.registry.data.dialog.action.DialogAction;
+import io.papermc.paper.registry.data.dialog.body.DialogBody;
 import io.papermc.paper.registry.data.dialog.type.DialogType;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.event.ClickCallback;
@@ -22,11 +23,8 @@ import java.util.List;
  * dialogUI 版的「选择传送目标」界面（在线玩家列表，不含自己）。
  * <p>
  * 一页 {@value #PAGE_SIZE} 个玩家，底部「上一页 / 返回主菜单 / 下一页」翻页。
- * 点击玩家 = 发起 {@code /tpa}（请求传送到对方身边）。
- * <p>
- * 注意：dialogUI 按钮没有「右键」，所以只提供「点击 = 传送到他身边（/tpa）」；
- * 「让他传送到你身边（/tpahere）」请用命令 {@code /tpahere <玩家名>}
- * （箱子 UI 保留左键 tpa / 右键 tpahere）。
+ * 点击玩家 = 弹出「传送方向」选择框（传送到他身边 / 让他传送到你身边），
+ * 与箱子 UI 的「左键 tpa / 右键 tpahere」功能对等（dialogUI 按钮无左右键，故用两步交互）。
  */
 public final class DialogTpaTarget {
 
@@ -65,6 +63,7 @@ public final class DialogTpaTarget {
         List<ActionButton> buttons = new ArrayList<>();
 
         for (Player target : pageTargets) {
+            final Player chosen = target;
             Component label = Messages.deserialize("<white>" + target.getName() + "</white>");
             Component tooltip = Messages.deserialize("<gray>" + target.getWorld().getName() + "</gray>");
 
@@ -72,7 +71,7 @@ public final class DialogTpaTarget {
                     .tooltip(tooltip)
                     .action(DialogAction.customClick((view, audience) -> {
                         if (audience instanceof Player p && p.isOnline()) {
-                            tpaManager.request(p, target, TpaManager.Type.TO);
+                            openDirectionDialog(plugin, p, chosen, tpaManager, options);
                         }
                     }, options))
                     .build());
@@ -101,6 +100,45 @@ public final class DialogTpaTarget {
                         .canCloseWithEscape(true)
                         .build())
                 .type(DialogType.multiAction(buttons).columns(1).build()));
+
+        player.showDialog(dialog);
+    }
+
+    /**
+     * 选定玩家后弹出「传送方向」选择框：传送到他身边（/tpa）/ 让他传送到你身边（/tpahere）。
+     * <p>
+     * dialogUI 的按钮没有左右键之分，所以用两步交互补齐 tpa / tpahere 两种方向，
+     * 与箱子 UI 的「左键 tpa / 右键 tpahere」功能对等。
+     */
+    private static void openDirectionDialog(StarfallplainMenu plugin, Player player, Player target,
+                                            TpaManager tpaManager, ClickCallback.Options options) {
+        Component title = Messages.deserialize("<aqua>玩家传送</aqua>");
+        Component body = Messages.deserialize("<yellow>" + target.getName() + "</yellow> <gray>—— 选择传送方向</gray>");
+
+        ActionButton to = ActionButton.builder(Messages.deserialize("<green>传送到他身边</green>"))
+                .tooltip(Messages.deserialize("<gray>等同 /tpa " + target.getName() + "</gray>"))
+                .action(DialogAction.customClick((view, audience) -> {
+                    if (audience instanceof Player p && p.isOnline()) {
+                        tpaManager.request(p, target, TpaManager.Type.TO);
+                    }
+                }, options))
+                .build();
+        ActionButton here = ActionButton.builder(Messages.deserialize("<aqua>让他传送到你身边</aqua>"))
+                .tooltip(Messages.deserialize("<gray>等同 /tpahere " + target.getName() + "</gray>"))
+                .action(DialogAction.customClick((view, audience) -> {
+                    if (audience instanceof Player p && p.isOnline()) {
+                        tpaManager.request(p, target, TpaManager.Type.HERE);
+                    }
+                }, options))
+                .build();
+
+        Dialog dialog = Dialog.create(builder -> builder
+                .empty()
+                .base(DialogBase.builder(title)
+                        .canCloseWithEscape(true)
+                        .body(List.of(DialogBody.plainMessage(body)))
+                        .build())
+                .type(DialogType.confirmation(to, here)));
 
         player.showDialog(dialog);
     }

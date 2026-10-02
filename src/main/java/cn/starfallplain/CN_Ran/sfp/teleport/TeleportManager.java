@@ -494,4 +494,43 @@ public final class TeleportManager {
             player.sendMessage(plugin.getMessage("teleport.failed", "<red>传送失败。</red>"));
         }
     }
+
+    /** 删除家（返回是否删掉），供 /delhome、箱子 GUI、dialogUI 共用 */
+    public boolean deleteHome(Player player, String name) {
+        boolean deleted = homeStore.delete(player.getUniqueId(), name);
+        if (!deleted) {
+            Map<String, String> ph = new HashMap<>();
+            ph.put("name", name);
+            plugin.getConfigManager().messages().send(player, "home.not-found",
+                    "<red>不存在名为「{name}」的家。</red>", ph);
+            return false;
+        }
+        Map<String, String> ph = new HashMap<>();
+        ph.put("name", name);
+        plugin.getConfigManager().messages().send(player, "home.del-success",
+                "<green>已删除家「{name}」。</green>", ph);
+        return true;
+    }
+
+    /** 删除公共传送点（含权限校验），供 /delwarp、箱子 GUI、dialogUI 共用 */
+    public boolean deleteWarp(Player player, String name) {
+        String permission = config.getWarpDeletePermission();
+        if (permission != null && !permission.isBlank() && !player.hasPermission(permission)) {
+            player.sendMessage(plugin.getMessage("common.no-permission", "<red>你没有权限使用此命令！</red>"));
+            return false;
+        }
+        boolean deleted = warpStore.delete(name);
+        if (!deleted) {
+            Map<String, String> ph = new HashMap<>();
+            ph.put("name", name);
+            plugin.getConfigManager().messages().send(player, "warp.not-found",
+                    "<red>不存在名为「{name}」的传送点。</red>", ph);
+            return false;
+        }
+        Map<String, String> ph = new HashMap<>();
+        ph.put("name", name);
+        plugin.getConfigManager().messages().send(player, "warp.del-success",
+                "<green>已删除传送点「{name}」。</green>", ph);
+        return true;
+    }
 }
