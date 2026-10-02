@@ -5,29 +5,28 @@ import cn.starfallplain.CN_Ran.sfp.chair.ChairManager;
 import cn.starfallplain.CN_Ran.sfp.clean.CleanTimePlaceholder;
 import cn.starfallplain.CN_Ran.sfp.clean.FloorCleanManager;
 import cn.starfallplain.CN_Ran.sfp.config.ConfigManager;
-import cn.starfallplain.CN_Ran.sfp.config.Messages;
+import cn.starfallplain.CN_Ran.sfp.debug.SfpCommand;
 import cn.starfallplain.CN_Ran.sfp.menu.MenuCommand;
 import cn.starfallplain.CN_Ran.sfp.menu.MenuListener;
 import cn.starfallplain.CN_Ran.sfp.teleport.TeleportListener;
 import cn.starfallplain.CN_Ran.sfp.teleport.TeleportManager;
+import cn.starfallplain.CN_Ran.sfp.teleport.TpaListener;
+import cn.starfallplain.CN_Ran.sfp.teleport.TpaManager;
 import cn.starfallplain.CN_Ran.sfp.teleport.command.BackCommand;
 import cn.starfallplain.CN_Ran.sfp.teleport.command.HomeCommand;
+import cn.starfallplain.CN_Ran.sfp.teleport.command.TpaCommand;
 import cn.starfallplain.CN_Ran.sfp.teleport.command.WarpCommand;
 import cn.starfallplain.CN_Ran.sfp.teleport.gui.TeleportGuiListener;
 import cn.starfallplain.CN_Ran.sfp.trashbin.TrashBinCommand;
 import cn.starfallplain.CN_Ran.sfp.trashbin.TrashBinListener;
 import cn.starfallplain.CN_Ran.sfp.trashbin.TrashBinManager;
 import io.papermc.paper.command.brigadier.BasicCommand;
-import io.papermc.paper.command.brigadier.CommandSourceStack;
 import io.papermc.paper.command.brigadier.Commands;
 import io.papermc.paper.plugin.lifecycle.event.types.LifecycleEvents;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
-import org.bukkit.command.CommandSender;
 import org.bukkit.plugin.java.JavaPlugin;
-import org.jetbrains.annotations.NotNull;
 
-import java.util.Collection;
 import java.util.List;
 
 /**
@@ -48,6 +47,8 @@ public final class StarfallplainMenu extends JavaPlugin {
     private ChairManager chairManager;
     private TrashBinManager trashBinManager;
     private TeleportManager teleportManager;
+    /** 玩家间传送请求（/tpa /tpahere /tpaccept /tpdeny），随传送系统一同创建 */
+    private TpaManager tpaManager;
 
     @Override
     public void onEnable() {
@@ -88,6 +89,10 @@ public final class StarfallplainMenu extends JavaPlugin {
         if (teleportManager != null) {
             teleportManager.shutdown();
         }
+        // 取消未过期的 tpa 请求任务
+        if (tpaManager != null) {
+            tpaManager.shutdown();
+        }
         getLogger().info("Starfallplain Menu 已禁用！");
     }
 
@@ -114,16 +119,17 @@ public final class StarfallplainMenu extends JavaPlugin {
             // 传送命令
             registerTeleportCommands(registrar);
 
-            // 管理命令 /sfp
-            registrar.register("sfp", "星落平原插件管理命令（/sfp reload）", new SfpCommand());
+            // 管理 / 调试命令 /sfp：reload / status / db / test
+            registrar.register("sfp", "星落平原管理命令（输入 /sfp 查看用法）", new SfpCommand(this));
         });
     }
 
     /**
-     * 注册传送命令（/back /home /sethome /delhome /homes /warp /setwarp /delwarp /warps）。
+     * 注册传送命令（/back /home /sethome /delhome /homes /warp /setwarp /delwarp /warps
+     * 以及 /tpa /tpahere /tpaccept /tpdeny）。
      * <p>
      * {@code BackCommand} 等实现的是 {@link BasicCommand}，拿不到命令标签，
-     * 因此 Home / Warp 系列由构造参数区分动作，每个标签各注册一个实例。
+     * 因此 Home / Warp / Tpa 系列由构造参数区分动作，每个标签各注册一个实例。
      * <p>
      * 传送模块被关闭（{@code teleportManager == null}）时仍注册同名命令，
      * 统一回复「功能未启用」，避免玩家误以为命令不存在。
@@ -133,7 +139,8 @@ public final class StarfallplainMenu extends JavaPlugin {
             BasicCommand disabled = (source, args) -> source.getSender().sendMessage(
                     getMessage("common.feature-disabled", "<red>该功能当前未启用。</red>"));
             for (String label : new String[]{"back", "home", "sethome", "delhome", "homes",
-                    "warp", "setwarp", "delwarp", "warps"}) {
+                    "warp", "setwarp", "delwarp", "warps",
+                    "tpa", "tpahere", "tpaccept", "tpdeny"}) {
                 registrar.register(label, "传送功能（当前未启用）", disabled);
             }
             return;
@@ -161,6 +168,16 @@ public final class StarfallplainMenu extends JavaPlugin {
                 new WarpCommand(this, teleportManager, "delwarp"));
         registrar.register("warps", "列出所有公共传送点",
                 new WarpCommand(this, teleportManager, "warps"));
+
+        // /tpa /tpahere /tpaccept /tpdeny
+        registrar.register("tpa", "请求传送到某玩家身边",
+                new TpaCommand(this, tpaManager, "tpa"));
+        registrar.register("tpahere", "请求某玩家传送到你身边",
+                new TpaCommand(this, tpaManager, "tpahere"));
+        registrar.register("tpaccept", "接受传送请求",
+                new TpaCommand(this, tpaManager, "tpaccept"));
+        registrar.register("tpdeny", "拒绝传送请求",
+                new TpaCommand(this, tpaManager, "tpdeny"));
     }
 
     private void setupTrashBin() {
@@ -215,10 +232,15 @@ public final class StarfallplainMenu extends JavaPlugin {
         if (!teleportManager.isStorageAvailable()) {
             getLogger().warning("传送数据库初始化失败，/back /home /warp 将不可用。");
         }
+        // 玩家间传送请求（会话态，不入库；与传送系统同生命周期）
+        tpaManager = new TpaManager(this, configManager.teleport(), teleportManager);
+
         getServer().getPluginManager().registerEvents(new TeleportListener(teleportManager, configManager.teleport()), this);
         getServer().getPluginManager().registerEvents(new TeleportGuiListener(this, teleportManager), this);
+        getServer().getPluginManager().registerEvents(new TpaListener(tpaManager), this);
 
-        getLogger().info("传送系统已启动（/back /home /warp，数据存储于 SQLite）。");
+        getLogger().info("传送系统已启动（/back /home /warp"
+                + (tpaManager.isEnabled() ? " /tpa /tpahere" : "") + "，数据存储于 SQLite）。");
     }
 
     private void setupPlaceholders(boolean papiOk) {
@@ -286,42 +308,8 @@ public final class StarfallplainMenu extends JavaPlugin {
         return teleportManager;
     }
 
-    // ==================== /sfp 管理命令 ====================
-
-    /**
-     * /sfp reload —— 重载配置
-     */
-    private final class SfpCommand implements BasicCommand {
-
-        @Override
-        public void execute(@NotNull CommandSourceStack source, @NotNull String[] args) {
-            CommandSender sender = source.getSender();
-            if (!sender.hasPermission("sfpmenu.admin")) {
-                sender.sendMessage(getMessage("common.no-permission", "<red>你没有权限使用此命令！</red>"));
-                return;
-            }
-            if (args.length == 1 && args[0].equalsIgnoreCase("reload")) {
-                if (reloadAll()) {
-                    sender.sendMessage(getMessage("common.reload-success",
-                            "<green>[星落平原] 配置已重载。</green>"));
-                    sender.sendMessage(Messages.deserialize(
-                            "<gray>提示：开关类的修改需重启服务器才能完全生效。</gray>"));
-                } else {
-                    sender.sendMessage(getMessage("common.reload-failed",
-                            "<red>[星落平原] 重载失败。</red>"));
-                }
-                return;
-            }
-            sender.sendMessage(getMessage("common.unknown-subcommand",
-                    "<red>未知子命令，用法：/sfp reload</red>"));
-        }
-
-        @Override
-        public Collection<String> suggest(@NotNull CommandSourceStack source, @NotNull String[] args) {
-            if (args.length == 1) {
-                return List.of("reload");
-            }
-            return List.of();
-        }
+    /** 玩家传送请求管理器；传送系统关闭时为 null */
+    public TpaManager getTpaManager() {
+        return tpaManager;
     }
 }

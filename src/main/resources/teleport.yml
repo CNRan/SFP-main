@@ -48,6 +48,16 @@ warp:
   # 传送冷却（秒）
   teleport-cooldown-seconds: 3
 
+# ---------- /tpa 玩家间传送请求 ----------
+tpa:
+  enabled: true
+  # 请求有效期（秒）：过期未响应自动失效
+  expire-seconds: 60
+  # 发起请求的冷却（秒）
+  request-cooldown-seconds: 3
+  # 接受请求后传送的冷却（秒）
+  teleport-cooldown-seconds: 3
+
 # ---------- 传送通用 ----------
 teleport:
   # 是否允许跨世界传送（false 时只能在本世界内传送到同名世界的位置）

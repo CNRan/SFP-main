@@ -89,6 +89,8 @@ public final class MenuConfig extends AbstractConfig {
     private String homeButtonId;
     private String warpButtonId;
     private String backButtonId;
+    // 玩家传送（tpa）按钮 id
+    private String tpaButtonId;
 
     // 玩家头颅位置
     private boolean showPlayerHead;
@@ -120,6 +122,7 @@ public final class MenuConfig extends AbstractConfig {
         homeButtonId = getString("bind.home-button", "home");
         warpButtonId = getString("bind.warp-button", "warp");
         backButtonId = getString("bind.back-button", "back");
+        tpaButtonId = getString("bind.tpa-button", "tpa");
 
         openPermission = getString("permission", "sfpmenu.player");
         permissionMessage = getString("permission-message", "你没有权限使用此命令");
@@ -190,6 +193,8 @@ public final class MenuConfig extends AbstractConfig {
     public String getWarpButtonId() { return warpButtonId; }
 
     public String getBackButtonId() { return backButtonId; }
+
+    public String getTpaButtonId() { return tpaButtonId; }
 
     public boolean isShowPlayerHead() { return showPlayerHead; }
 

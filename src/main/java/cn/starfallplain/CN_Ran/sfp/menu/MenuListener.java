@@ -4,6 +4,7 @@ import cn.starfallplain.CN_Ran.sfp.StarfallplainMenu;
 import cn.starfallplain.CN_Ran.sfp.config.ConfigManager;
 import cn.starfallplain.CN_Ran.sfp.teleport.TeleportManager;
 import cn.starfallplain.CN_Ran.sfp.teleport.gui.HomeListGui;
+import cn.starfallplain.CN_Ran.sfp.teleport.gui.TpaTargetGui;
 import cn.starfallplain.CN_Ran.sfp.teleport.gui.WarpListGui;
 import cn.starfallplain.CN_Ran.sfp.trashbin.TrashBinCommand;
 import cn.starfallplain.CN_Ran.sfp.trashbin.TrashBinManager;
@@ -65,6 +66,11 @@ public class MenuListener implements Listener {
 
         if (MenuHolder.ACTION_BACK.equals(action)) {
             handleBack(player);
+            return;
+        }
+
+        if (MenuHolder.ACTION_TPA.equals(action)) {
+            handleTpaTarget(player);
         }
     }
 
@@ -111,6 +117,19 @@ public class MenuListener implements Listener {
         Bukkit.getScheduler().runTask(plugin, () -> {
             if (!player.isOnline()) return;
             player.performCommand("back");
+        });
+    }
+
+    /** 菜单里的玩家传送按钮：打开「选择传送目标」界面 */
+    private void handleTpaTarget(Player player) {
+        if (plugin.getTpaManager() == null) {
+            player.sendMessage(configManager.messages().component("common.feature-disabled",
+                    "<red>该功能当前未启用。</red>"));
+            return;
+        }
+        player.closeInventory();
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            if (player.isOnline()) TpaTargetGui.open(plugin, player, 0);
         });
     }
 }

@@ -4,6 +4,7 @@ import cn.starfallplain.CN_Ran.sfp.StarfallplainMenu;
 import cn.starfallplain.CN_Ran.sfp.config.module.TeleportConfig;
 import cn.starfallplain.CN_Ran.sfp.menu.MenuManager;
 import cn.starfallplain.CN_Ran.sfp.teleport.TeleportManager;
+import cn.starfallplain.CN_Ran.sfp.teleport.TpaManager;
 import cn.starfallplain.CN_Ran.sfp.teleport.db.StoredLocation;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
@@ -15,6 +16,7 @@ import org.bukkit.event.inventory.InventoryDragEvent;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * 传送列表界面交互监听器：
@@ -37,6 +39,13 @@ public class TeleportGuiListener implements Listener {
 
     @EventHandler
     public void onClick(InventoryClickEvent event) {
+        // 玩家传送目标界面（内容格是玩家头颅，语义与列表不同，单独处理）
+        if (event.getInventory().getHolder() instanceof TpaTargetHolder tpaHolder) {
+            event.setCancelled(true);
+            handleTpaTarget(event, tpaHolder);
+            return;
+        }
+
         if (!(event.getInventory().getHolder() instanceof TeleportListHolder holder)) return;
         event.setCancelled(true);
 
@@ -212,8 +221,58 @@ public class TeleportGuiListener implements Listener {
 
     @EventHandler
     public void onDrag(InventoryDragEvent event) {
-        if (event.getInventory().getHolder() instanceof TeleportListHolder) {
+        if (event.getInventory().getHolder() instanceof TeleportListHolder
+                || event.getInventory().getHolder() instanceof TpaTargetHolder) {
             event.setCancelled(true);
+        }
+    }
+
+    // ==================== 玩家传送目标界面 ====================
+
+    /** 左键 = 请求传送到该玩家身边，右键 = 请求该玩家传送到自己身边 */
+    private void handleTpaTarget(InventoryClickEvent event, TpaTargetHolder holder) {
+        if (!(event.getWhoClicked() instanceof Player player)) return;
+        int slot = event.getRawSlot();
+        if (slot < 0 || slot >= 54) return;
+
+        if (slot == TpaTargetHolder.SLOT_PREV) {
+            if (holder.getPage() > 0) {
+                TpaTargetGui.open(plugin, player, holder.getPage() - 1);
+            }
+            return;
+        }
+        if (slot == TpaTargetHolder.SLOT_NEXT) {
+            // 越界时 open 内部会夹紧
+            TpaTargetGui.open(plugin, player, holder.getPage() + 1);
+            return;
+        }
+        if (slot == TpaTargetHolder.SLOT_BACK) {
+            player.closeInventory();
+            Bukkit.getScheduler().runTask(plugin, () -> {
+                if (player.isOnline()) MenuManager.openMainMenu(plugin, player);
+            });
+            return;
+        }
+        if (slot == TpaTargetHolder.SLOT_INFO) return;
+        if (slot >= holder.getPageSize()) return;   // 导航区灰板
+
+        TpaManager tpaManager = plugin.getTpaManager();
+        if (tpaManager == null) return;
+
+        UUID targetId = holder.getEntryAt(slot);
+        if (targetId == null) return;
+        Player target = Bukkit.getPlayer(targetId);
+        if (target == null) {
+            player.sendMessage(plugin.getMessage("tpa.target-offline",
+                    "<red>该玩家已离线。</red>"));
+            TpaTargetGui.open(plugin, player, holder.getPage());   // 刷新列表
+            return;
+        }
+
+        boolean rightClick = event.getClick() == ClickType.RIGHT
+                || event.getClick() == ClickType.SHIFT_RIGHT;
+        if (tpaManager.request(player, target, rightClick ? TpaManager.Type.HERE : TpaManager.Type.TO)) {
+            player.closeInventory();   // 发起成功就回到游戏，等对方在弹窗/聊天里响应
         }
     }
 }

@@ -9,15 +9,17 @@
 #   name      显示名（MiniMessage）
 #   lore      描述（列表，可省略）
 #   command   点击执行的命令，不含斜杠
-#             （留空 = 由插件内部处理，如垃圾桶 / 家 / 传送点 / 返回按钮）
+#             （留空 = 由插件内部处理，如垃圾桶 / 家 / 传送点 / 玩家传送 / 返回按钮）
 #
 # 槽位分布（5 行 × 9 列，第 0/4 行与第 0/8 列为边框）：
 #       列0  列1  列2  列3  列4  列5  列6  列7  列8
 #   行0  ▓    ▓    ▓    ▓   头   ▓    ▓    ▓    ▓
 #   行1  ▓    .   返   .   家   .   点   .   桶   ▓
-#   行2  ▓    .   领   .   扫   .   坐   .    .   ▓
+#   行2  ▓    .   领   .   传   .   坐   .    .   ▓
 #   行3  ▓    .    .    .    .    .    .    .    ▓
 #   行4  ▓    ▓    ▓    ▓    ▓    ▓    ▓    ▓    ▓
+#
+# 注：垃圾桶入口只保留「桶」这一个按钮（烈焰棒的自动扫地按钮已移除，避免两个按钮做同一件事）。
 # ==========================================================
 
 # 总开关：false 则停用整个菜单（/menu 与 /m 提示未启用）
@@ -62,6 +64,7 @@ bind:
   home-button: "home"
   warp-button: "warp"
   back-button: "back"
+  tpa-button: "tpa"
 
 # 权限
 permission: "sfpmenu.player"
@@ -122,17 +125,17 @@ buttons:
       - "<gray>管理你的领地</gray>"
     command: "dom"
 
-  # 自动扫地（点击直接打开垃圾桶界面，取回被清扫的物品）
-  clean:
+  # 玩家传送（打开「选择传送目标」界面，用箱子里的玩家头颅选人）
+  tpa:
     enabled: true
     slot: 31
-    material: BLAZE_ROD
-    name: "<yellow>自动扫地</yellow>"
+    material: COMPASS
+    name: "<aqua>玩家传送</aqua>"
     lore:
-      - "<gray>服务器定期清扫地面掉落物</gray>"
-      - "<gray>被清扫的物品都会进入垃圾桶</gray>"
-      - "<yellow>点击打开垃圾桶界面</yellow>"
-    command: "trashbin"
+      - "<gray>选择一个在线玩家作为传送目标</gray>"
+      - "<gray>左键：请求传送到他身边</gray>"
+      - "<gray>右键：请求他传送到你身边</gray>"
+    command: ""
 
   # 坐下休息说明（只读展示；实际交互为告示牌 + 右键方块）
   chair:

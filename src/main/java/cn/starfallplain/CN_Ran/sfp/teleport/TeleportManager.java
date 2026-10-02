@@ -88,6 +88,16 @@ public final class TeleportManager {
         return backStore;
     }
 
+    /** 数据层本体（供 /sfp db 直接做诊断查询） */
+    public Database getDatabase() {
+        return database;
+    }
+
+    /** 当前等待中的延迟传送数量（供 /sfp status / /sfp test 显示运行态） */
+    public int pendingCount() {
+        return pendingTeleports.size();
+    }
+
     /** 数据层是否可用（三个 Store 共用同一个连接，判断一次即可） */
     public boolean isStorageAvailable() {
         return database.isAvailable();

@@ -43,6 +43,11 @@ public class ChairManager {
         return sittingPlayers.containsKey(player.getUniqueId());
     }
 
+    /** 当前坐在椅子上的玩家数量（供 /sfp status 与自检显示运行态） */
+    public int sittingCount() {
+        return sittingPlayers.size();
+    }
+
     public Block getChairBlock(Player player) {
         return chairBlocks.get(player.getUniqueId());
     }

@@ -37,6 +37,12 @@ public final class TeleportConfig extends AbstractConfig {
     private String warpDeletePermission;
     private int warpTeleportCooldownSeconds;
 
+    // tpa（玩家间传送请求）
+    private boolean tpaEnabled;
+    private int tpaExpireSeconds;
+    private int tpaRequestCooldownSeconds;
+    private int tpaTeleportCooldownSeconds;
+
     // 通用传送
     private boolean allowCrossWorld;
     private int delaySeconds;
@@ -70,6 +76,11 @@ public final class TeleportConfig extends AbstractConfig {
         warpSetPermission = getString("warp.set-permission", "sfpmenu.warp.set");
         warpDeletePermission = getString("warp.delete-permission", "sfpmenu.warp.delete");
         warpTeleportCooldownSeconds = getInt("warp.teleport-cooldown-seconds", 3);
+
+        tpaEnabled = getBoolean("tpa.enabled", true);
+        tpaExpireSeconds = Math.max(5, getInt("tpa.expire-seconds", 60));
+        tpaRequestCooldownSeconds = Math.max(0, getInt("tpa.request-cooldown-seconds", 3));
+        tpaTeleportCooldownSeconds = Math.max(0, getInt("tpa.teleport-cooldown-seconds", 3));
 
         allowCrossWorld = getBoolean("teleport.allow-cross-world", true);
         delaySeconds = Math.max(0, getInt("teleport.delay-seconds", 0));
@@ -112,6 +123,15 @@ public final class TeleportConfig extends AbstractConfig {
     public String getWarpDeletePermission() { return warpDeletePermission; }
 
     public int getWarpTeleportCooldownSeconds() { return warpTeleportCooldownSeconds; }
+
+    public boolean isTpaEnabled() { return tpaEnabled; }
+
+    /** tpa 请求有效期（秒），至少 5 */
+    public int getTpaExpireSeconds() { return tpaExpireSeconds; }
+
+    public int getTpaRequestCooldownSeconds() { return tpaRequestCooldownSeconds; }
+
+    public int getTpaTeleportCooldownSeconds() { return tpaTeleportCooldownSeconds; }
 
     public boolean isAllowCrossWorld() { return allowCrossWorld; }
 

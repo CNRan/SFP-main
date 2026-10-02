@@ -15,7 +15,7 @@ common:
   feature-disabled: "<red>该功能当前未启用。</red>"
   reload-success: "<green>[星落平原] 配置已重载。</green>"
   reload-failed: "<red>[星落平原] 重载失败。</red>"
-  unknown-subcommand: "<red>未知子命令，用法：/sfp reload</red>"
+  unknown-subcommand: "<red>未知子命令，输入 /sfp 查看用法。</red>"
   # 子界面（垃圾桶 / 家列表 / 传送点列表）导航行里的返回按钮
   back-to-menu: "<!i><yellow>返回主菜单</yellow>"
 
@@ -110,6 +110,58 @@ warp:
   usage-delwarp: "<red>用法：/delwarp <名称></red>"
   list-header: "<aqua>传送点（{count}）：</aqua>"
   list-entry: "<gray> - </gray><white>{name}</white> <dark_gray>({location})</dark_gray>"
+
+# ---------- 玩家间传送请求（/tpa /tpahere）----------
+# 收到请求时会同时发两样东西：
+#   ① 原生弹窗界面（带「接受 / 拒绝」按钮）——用 tpa.dialog-* 的文案
+#   ② 聊天里的可点击按钮 + 手动输入提示——用 tpa.tui-* 的文案
+# 两条通道最终都执行 /tpaccept、/tpdeny，行为一致；tui 那套是客户端弹窗不生效时的兜底。
+tpa:
+  # 弹窗界面
+  dialog-title: "<!i><gold>传送请求</gold>"
+  dialog-accept: "<!i><green>接受</green>"
+  dialog-deny: "<!i><red>拒绝</red>"
+  dialog-accept-hover: "<!i><gray>同意这次传送</gray>"
+  dialog-deny-hover: "<!i><gray>拒绝这次传送</gray>"
+  # 聊天 TUI（同一条消息里的按钮 + 手动输入提示）
+  tui-accept: "<!i><click:run_command:'/tpaccept {from}'><green>[接受]</green></click>"
+  tui-deny: "<!i><click:run_command:'/tpdeny {from}'><red>[拒绝]</red></click>"
+  tui-tip: "<!i><dark_gray>（上面的按钮点不动时，手动输入：/tpaccept {from} 或 /tpdeny {from}）</dark_gray>"
+  # 请求正文：{from} 为发起者名字
+  request-to: "<!i><yellow>{from}</yellow> <gray>请求传送到你身边</gray>"
+  request-here: "<!i><yellow>{from}</yellow> <gray>请求把你传送到TA身边</gray>"
+  # 发起者回执
+  sent-to: "<green>已请求传送到 {target} 身边，等待对方响应（{seconds} 秒内有效）。</green>"
+  sent-here: "<green>已请求让 {target} 传送到你身边，等待对方响应（{seconds} 秒内有效）。</green>"
+  # 结果提示
+  accepted-target: "<green>已接受 {from} 的传送请求。</green>"
+  accepted-from: "<green>{target} 接受了你的请求，正在传送……</green>"
+  denied-target: "<gray>已拒绝 {from} 的传送请求。</gray>"
+  denied-from: "<red>{target} 拒绝了你的传送请求。</red>"
+  expired-from: "<red>你发给 {target} 的传送请求已过期。</red>"
+  expired-target: "<gray>{from} 的传送请求已过期。</gray>"
+  from-offline: "<gray>{from} 已离线，传送请求已取消。</gray>"
+  # 异常与用法
+  no-request: "<red>没有待处理的传送请求（可能已被处理或已过期）。</red>"
+  not-found: "<red>没有来自「{name}」的待处理请求。</red>"
+  target-offline: "<red>玩家「{name}」不在线。</red>"
+  offline: "<red>对方已离线，请求已取消。</red>"
+  self: "<red>不能向自己发起传送请求。</red>"
+  replaced: "<red>你发给 {target} 的传送请求已被新的请求取代。</red>"
+  cooldown: "<red>传送请求冷却中，请等待 {seconds} 秒。</red>"
+  usage-tpa: "<red>用法：/tpa <玩家名> —— 请求传送到对方身边。</red>"
+  usage-tpahere: "<red>用法：/tpahere <玩家名> —— 请求对方传送到你身边。</red>"
+  # 菜单里的「选择传送目标」界面
+  gui-title: "<!i><aqua>选择传送目标</aqua> <gray>- 第 {page}/{pages} 页</gray>"
+  gui-info-name: "<!i><aqua>玩家传送</aqua>"
+  gui-info-lore:
+    - "<!i><gray>在线玩家： <white>{total}</white></gray>"
+    - "<!i><gray>当前页： <white>{page}/{pages}</white></gray>"
+    - "<!i><gray>左键 = 我去他那，右键 = 他来我这</gray>"
+  gui-entry-lore:
+    - "<!i><gray>所在世界： <white>{world}</white></gray>"
+    - "<!i><green>左键</green><gray> 请求传送到他身边</gray>"
+    - "<!i><red>右键</red><gray> 请求他传送到你身边</gray>"
 
 # ---------- 菜单（menu 包）----------
 menu:

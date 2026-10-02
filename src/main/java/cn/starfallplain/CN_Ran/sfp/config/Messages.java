@@ -80,6 +80,15 @@ public final class Messages {
         return deserialize(raw(key, fallbackText));
     }
 
+    /**
+     * 该键是否存在于 messages.yml（或 jar 内置默认文件）中。
+     * 供 /sfp test 检查文案键是否齐全 —— {@link #raw} 有兜底，光看返回值分不出「缺键」。
+     */
+    public boolean has(String key) {
+        if (config != null && config.isSet(key)) return true;
+        return fallback != null && fallback.isSet(key);
+    }
+
     /** 取字符串列表并逐条解析为 Component（用于多行提示） */
     public List<Component> components(String key, List<String> fallbackLines) {
         List<String> lines = config.getStringList(key);

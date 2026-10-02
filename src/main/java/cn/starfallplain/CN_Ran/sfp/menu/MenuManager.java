@@ -64,13 +64,49 @@ public class MenuManager {
         return true;
     }
 
+    /**
+     * 解析 menu.yml 得到「槽位 → 动作」映射。
+     * <p>
+     * 与 {@link #createMainMenu} 用的是同一套判定（模块开关、按钮开关、槽位范围），
+     * 因此 /sfp test 查出来的绑定结果就是玩家实际点击的结果，不会出现「自检说绑上了、实际没绑」。
+     */
+    public static Map<Integer, String> resolveSlotActions(MenuConfig menuConfig, ConfigManager cm) {
+        Map<Integer, String> slotActions = new LinkedHashMap<>();
+        int size = menuConfig.getSize();
+
+        for (MenuConfig.Button button : menuConfig.getButtons().values()) {
+            if (!isFeatureEnabled(button.getId(), menuConfig, cm)) continue;
+            if (!button.isVisible()) continue;
+
+            int slot = button.getSlot();
+            if (slot < 0 || slot >= size) continue;
+
+            String action = resolveAction(button, menuConfig);
+            if (action != null) {
+                slotActions.put(slot, action);
+            }
+        }
+        return slotActions;
+    }
+
+    /** 单个按钮对应的动作串；返回 null 表示该按钮没有任何绑定（点了没反应） */
+    public static String resolveAction(MenuConfig.Button button, MenuConfig menuConfig) {
+        if (button.getId().equals(menuConfig.getTrashBinButtonId())) return MenuHolder.ACTION_TRASHBIN;
+        if (button.getId().equals(menuConfig.getHomeButtonId())) return MenuHolder.ACTION_HOME;
+        if (button.getId().equals(menuConfig.getWarpButtonId())) return MenuHolder.ACTION_WARP;
+        if (button.getId().equals(menuConfig.getBackButtonId())) return MenuHolder.ACTION_BACK;
+        if (button.getId().equals(menuConfig.getTpaButtonId())) return MenuHolder.ACTION_TPA;
+        if (!button.getCommand().isBlank()) return MenuHolder.CMD_PREFIX + button.getCommand();
+        return null;
+    }
+
     public static Inventory createMainMenu(StarfallplainMenu plugin, Player player) {
         ConfigManager cm = plugin.getConfigManager();
         MenuConfig menuConfig = cm.menu();
         Messages messages = cm.messages();
 
         int size = menuConfig.getSize();
-        Map<Integer, String> slotActions = new LinkedHashMap<>();
+        Map<Integer, String> slotActions = resolveSlotActions(menuConfig, cm);
         MenuHolder holder = new MenuHolder(MenuHolder.MenuType.MAIN, slotActions, menuConfig);
 
         Component title = Messages.deserialize(resolveTitle(cm));
@@ -95,21 +131,7 @@ public class MenuManager {
                         + "' 的槽位 " + slot + " 超出菜单范围（0~" + (size - 1) + "），已忽略。");
                 continue;
             }
-
             inv.setItem(slot, createButton(button));
-
-            // 记录点击动作
-            if (button.getId().equals(menuConfig.getTrashBinButtonId())) {
-                slotActions.put(slot, MenuHolder.ACTION_TRASHBIN);
-            } else if (button.getId().equals(menuConfig.getHomeButtonId())) {
-                slotActions.put(slot, MenuHolder.ACTION_HOME);
-            } else if (button.getId().equals(menuConfig.getWarpButtonId())) {
-                slotActions.put(slot, MenuHolder.ACTION_WARP);
-            } else if (button.getId().equals(menuConfig.getBackButtonId())) {
-                slotActions.put(slot, MenuHolder.ACTION_BACK);
-            } else if (!button.getCommand().isBlank()) {
-                slotActions.put(slot, MenuHolder.CMD_PREFIX + button.getCommand());
-            }
         }
 
         return inv;
@@ -121,6 +143,7 @@ public class MenuManager {
         if (buttonId.equals(menuConfig.getHomeButtonId())) return cm.teleport().isEnabled() && cm.teleport().isHomeEnabled();
         if (buttonId.equals(menuConfig.getWarpButtonId())) return cm.teleport().isEnabled() && cm.teleport().isWarpEnabled();
         if (buttonId.equals(menuConfig.getBackButtonId())) return cm.teleport().isEnabled() && cm.teleport().isBackEnabled();
+        if (buttonId.equals(menuConfig.getTpaButtonId())) return cm.teleport().isEnabled() && cm.teleport().isTpaEnabled();
         return true;
     }
 

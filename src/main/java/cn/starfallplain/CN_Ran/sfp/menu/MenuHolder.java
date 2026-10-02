@@ -18,6 +18,7 @@ import java.util.Map;
  *   <li>{@code acthome} —— 内置动作：打开家列表</li>
  *   <li>{@code actwarp} —— 内置动作：打开传送点列表</li>
  *   <li>{@code actback} —— 内置动作：执行返回</li>
+ *   <li>{@code acttpa} —— 内置动作：打开玩家传送目标选择界面</li>
  * </ul>
  */
 public class MenuHolder implements InventoryHolder {
@@ -29,6 +30,7 @@ public class MenuHolder implements InventoryHolder {
     public static final String ACTION_HOME = "acthome";
     public static final String ACTION_WARP = "actwarp";
     public static final String ACTION_BACK = "actback";
+    public static final String ACTION_TPA = "acttpa";
     public static final String CMD_PREFIX = "cmd:";
 
     private Inventory inventory;

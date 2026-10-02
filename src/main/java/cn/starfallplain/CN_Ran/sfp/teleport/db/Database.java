@@ -197,6 +197,16 @@ public final class Database {
         // }
     }
 
+    /** 数据库文件（供 /sfp db 显示路径与大小） */
+    public File getFile() {
+        return dbFile;
+    }
+
+    /** 代码期望的表结构版本（供 /sfp db 与实际版本对比） */
+    public static int expectedSchemaVersion() {
+        return SCHEMA_VERSION;
+    }
+
     // ==================== 结构工具（供 migrate 使用）====================
 
     /** 依次执行若干条 SQL；任一失败即抛出，后续步骤不再执行（下次启动会从当前版本重试） */

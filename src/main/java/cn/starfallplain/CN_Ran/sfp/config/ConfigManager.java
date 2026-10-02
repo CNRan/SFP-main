@@ -75,7 +75,7 @@ public final class ConfigManager {
         lines.add(flagLine("自动扫地", cleanConfig.isEnabled(), true));
         lines.add(flagLine("垃圾桶", trashBinConfig.isEnabled(), true));
         lines.add(flagLine("椅子", chairConfig.isEnabled(), true));
-        lines.add(flagLine("传送（/back /home /warp）", teleportConfig.isEnabled(), true));
+        lines.add(flagLine("传送（/back /home /warp /tpa）", teleportConfig.isEnabled(), true));
         lines.add("  · 扫地倒计时 PAPI 占位符：" + (papiAvailable ? "可用" : "不可用（缺少 PlaceholderAPI）"));
         return lines;
     }
