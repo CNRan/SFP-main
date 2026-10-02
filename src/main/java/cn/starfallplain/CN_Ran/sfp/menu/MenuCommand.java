@@ -37,19 +37,8 @@ public class MenuCommand implements BasicCommand {
             return;
         }
 
-        var menuConfig = plugin.getConfigManager().menu();
-        String permission = menuConfig.getOpenPermission();
-        if (permission != null && !permission.isBlank() && !player.hasPermission(permission)) {
-            player.sendMessage(plugin.getMessage("common.no-permission", "<red>你没有权限使用此命令！</red>"));
-            return;
-        }
-
-        if (!menuConfig.isEnabled()) {
-            // menu.yml 没有独立 enabled 字段时默认视为启用；此处仅为显式支持
-            player.sendMessage(plugin.getMessage("common.feature-disabled", "<red>该功能当前未启用。</red>"));
-            return;
-        }
-
-        player.openInventory(MenuManager.createMainMenu(plugin, player));
+        // 开关与打开权限的校验统一在 MenuManager.openMainMenu 里做，
+        // 与各子界面的「返回主菜单」按钮共用同一套行为
+        MenuManager.openMainMenu(plugin, player);
     }
 }

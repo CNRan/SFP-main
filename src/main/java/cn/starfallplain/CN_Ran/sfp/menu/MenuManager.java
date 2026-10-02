@@ -39,6 +39,31 @@ public class MenuManager {
 
     // ==================== 主菜单 ====================
 
+    /**
+     * 打开主菜单，统一做「开关 + 打开权限」校验。
+     * <p>
+     * 供 /menu 命令与各子界面（垃圾桶 / 家列表 / 传送点列表）的「返回主菜单」按钮复用，
+     * 保证所有入口行为一致。
+     *
+     * @return 是否成功打开了菜单（false 表示已向玩家发送了失败提示）
+     */
+    public static boolean openMainMenu(StarfallplainMenu plugin, Player player) {
+        MenuConfig menuConfig = plugin.getConfigManager().menu();
+
+        String permission = menuConfig.getOpenPermission();
+        if (permission != null && !permission.isBlank() && !player.hasPermission(permission)) {
+            player.sendMessage(plugin.getMessage("common.no-permission", "<red>你没有权限使用此命令！</red>"));
+            return false;
+        }
+        if (!menuConfig.isEnabled()) {
+            player.sendMessage(plugin.getMessage("common.feature-disabled", "<red>该功能当前未启用。</red>"));
+            return false;
+        }
+
+        player.openInventory(createMainMenu(plugin, player));
+        return true;
+    }
+
     public static Inventory createMainMenu(StarfallplainMenu plugin, Player player) {
         ConfigManager cm = plugin.getConfigManager();
         MenuConfig menuConfig = cm.menu();

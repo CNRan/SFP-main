@@ -87,24 +87,28 @@ public final class TeleportListGui {
             inv.setItem(i, createEntry(name, loc, icon));
         }
 
-        // 导航行
+        // 导航行：上一页 / 灰板 / 返回 / 页码 / 灰板 / 下一页
         ItemStack grayPane = createIcon(Material.GRAY_STAINED_GLASS_PANE, "<!i><dark_gray> </dark_gray>");
-        for (int slot : new int[]{46, 47, 48, 50, 51, 52}) {
+        for (int slot : new int[]{46, 47, 50, 51, 52}) {
             inv.setItem(slot, grayPane);
         }
 
         if (page > 0) {
-            inv.setItem(TeleportListHolder.SLOT_PREV, createIcon(Material.ARROW,
+            inv.setItem(TeleportListHolder.SLOT_PREV, createIcon(Material.SPECTRAL_ARROW,
                     plugin.getRawMessage("teleport.prev", "<!i><yellow>上一页</yellow>")));
         } else {
             inv.setItem(TeleportListHolder.SLOT_PREV, createIcon(Material.GRAY_STAINED_GLASS_PANE,
                     plugin.getRawMessage("teleport.first", "<!i><dark_gray>首页</dark_gray>")));
         }
 
+        // 返回主菜单（点击由 TeleportGuiListener 处理）
+        inv.setItem(TeleportListHolder.SLOT_BACK, createIcon(Material.OAK_DOOR,
+                plugin.getRawMessage("common.back-to-menu", "<!i><yellow>返回主菜单</yellow>")));
+
         inv.setItem(TeleportListHolder.SLOT_INFO, createInfo(plugin, type, allNames.size(), page + 1, pageCount, ph));
 
         if (page < pageCount - 1) {
-            inv.setItem(TeleportListHolder.SLOT_NEXT, createIcon(Material.ARROW,
+            inv.setItem(TeleportListHolder.SLOT_NEXT, createIcon(Material.SPECTRAL_ARROW,
                     plugin.getRawMessage("teleport.next", "<!i><yellow>下一页</yellow>")));
         } else {
             inv.setItem(TeleportListHolder.SLOT_NEXT, createIcon(Material.GRAY_STAINED_GLASS_PANE,

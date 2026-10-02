@@ -22,6 +22,7 @@ public class TeleportListHolder implements InventoryHolder {
     public enum ListType { HOME, WARP }
 
     public static final int SLOT_PREV = 45;
+    public static final int SLOT_BACK = 48;   // 返回主菜单
     public static final int SLOT_INFO = 49;
     public static final int SLOT_NEXT = 53;
 

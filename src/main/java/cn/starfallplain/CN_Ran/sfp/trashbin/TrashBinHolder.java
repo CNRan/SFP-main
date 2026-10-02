@@ -11,6 +11,7 @@ import org.jetbrains.annotations.NotNull;
 public class TrashBinHolder implements InventoryHolder {
 
     public static final int SLOT_PREV = 45;   // 上一页
+    public static final int SLOT_BACK = 48;   // 返回主菜单
     public static final int SLOT_INFO = 49;   // 页码信息
     public static final int SLOT_NEXT = 53;   // 下一页
 

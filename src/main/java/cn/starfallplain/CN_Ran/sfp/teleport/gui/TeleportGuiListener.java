@@ -2,8 +2,10 @@ package cn.starfallplain.CN_Ran.sfp.teleport.gui;
 
 import cn.starfallplain.CN_Ran.sfp.StarfallplainMenu;
 import cn.starfallplain.CN_Ran.sfp.config.module.TeleportConfig;
+import cn.starfallplain.CN_Ran.sfp.menu.MenuManager;
 import cn.starfallplain.CN_Ran.sfp.teleport.TeleportManager;
 import cn.starfallplain.CN_Ran.sfp.teleport.db.StoredLocation;
+import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -55,6 +57,14 @@ public class TeleportGuiListener implements Listener {
             int next = holder.getPage() + 1;
             // 越界时 open 内部会自动夹紧，这里仅在有更多页时才翻
             TeleportListGui.open(plugin, player, manager, holder.getListType(), next);
+            return;
+        }
+        if (slot == TeleportListHolder.SLOT_BACK) {
+            // 返回主菜单：先关掉本界面，延迟一 tick 再打开，避免在点击事件里直接换 GUI
+            player.closeInventory();
+            Bukkit.getScheduler().runTask(plugin, () -> {
+                if (player.isOnline()) MenuManager.openMainMenu(plugin, player);
+            });
             return;
         }
         if (slot == TeleportListHolder.SLOT_INFO) return;

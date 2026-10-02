@@ -16,6 +16,8 @@ common:
   reload-success: "<green>[星落平原] 配置已重载。</green>"
   reload-failed: "<red>[星落平原] 重载失败。</red>"
   unknown-subcommand: "<red>未知子命令，用法：/sfp reload</red>"
+  # 子界面（垃圾桶 / 家列表 / 传送点列表）导航行里的返回按钮
+  back-to-menu: "<!i><yellow>返回主菜单</yellow>"
 
 # ---------- 扫地（clean 包）----------
 clean:

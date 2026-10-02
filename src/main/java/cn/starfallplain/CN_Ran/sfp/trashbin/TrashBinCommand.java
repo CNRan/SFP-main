@@ -83,24 +83,28 @@ public class TrashBinCommand implements BasicCommand {
             }
         }
 
-        // 导航行（45~53）：上一页 / 灰板 / 页码 / 灰板 / 下一页
+        // 导航行（45~53）：上一页 / 灰板 / 返回 / 页码 / 灰板 / 下一页
         ItemStack grayPane = createIcon(Material.GRAY_STAINED_GLASS_PANE, "<!i><dark_gray> </dark_gray>");
-        for (int slot : new int[]{46, 47, 48, 50, 51, 52}) {
+        for (int slot : new int[]{46, 47, 50, 51, 52}) {
             inv.setItem(slot, grayPane);
         }
 
         if (page > 0) {
-            inv.setItem(TrashBinHolder.SLOT_PREV, createIcon(Material.ARROW,
+            inv.setItem(TrashBinHolder.SLOT_PREV, createIcon(Material.SPECTRAL_ARROW,
                     plugin.getRawMessage("trashbin.prev", "<!i><yellow>上一页</yellow>")));
         } else {
             inv.setItem(TrashBinHolder.SLOT_PREV, createIcon(Material.GRAY_STAINED_GLASS_PANE,
                     plugin.getRawMessage("trashbin.first", "<!i><dark_gray>首页</dark_gray>")));
         }
 
+        // 返回主菜单（点击由 TrashBinListener 处理）
+        inv.setItem(TrashBinHolder.SLOT_BACK, createIcon(Material.OAK_DOOR,
+                plugin.getRawMessage("common.back-to-menu", "<!i><yellow>返回主菜单</yellow>")));
+
         inv.setItem(TrashBinHolder.SLOT_INFO, createInfoItem(plugin, manager.size(), page + 1, pageCount, ph));
 
         if (page < pageCount - 1) {
-            inv.setItem(TrashBinHolder.SLOT_NEXT, createIcon(Material.ARROW,
+            inv.setItem(TrashBinHolder.SLOT_NEXT, createIcon(Material.SPECTRAL_ARROW,
                     plugin.getRawMessage("trashbin.next", "<!i><yellow>下一页</yellow>")));
         } else {
             inv.setItem(TrashBinHolder.SLOT_NEXT, createIcon(Material.GRAY_STAINED_GLASS_PANE,

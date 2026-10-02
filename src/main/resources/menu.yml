@@ -122,7 +122,7 @@ buttons:
       - "<gray>管理你的领地</gray>"
     command: "dom"
 
-  # 自动扫地说明（只读展示；实际清扫由服务器定时执行）
+  # 自动扫地（点击直接打开垃圾桶界面，取回被清扫的物品）
   clean:
     enabled: true
     slot: 31
@@ -130,8 +130,9 @@ buttons:
     name: "<yellow>自动扫地</yellow>"
     lore:
       - "<gray>服务器定期清扫地面掉落物</gray>"
-      - "<gray>被清扫物品可在垃圾桶取回</gray>"
-    command: ""
+      - "<gray>被清扫的物品都会进入垃圾桶</gray>"
+      - "<yellow>点击打开垃圾桶界面</yellow>"
+    command: "trashbin"
 
   # 坐下休息说明（只读展示；实际交互为告示牌 + 右键方块）
   chair:

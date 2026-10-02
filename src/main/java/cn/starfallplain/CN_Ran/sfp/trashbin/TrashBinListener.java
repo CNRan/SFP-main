@@ -1,7 +1,9 @@
 package cn.starfallplain.CN_Ran.sfp.trashbin;
 
 import cn.starfallplain.CN_Ran.sfp.StarfallplainMenu;
+import cn.starfallplain.CN_Ran.sfp.menu.MenuManager;
 import cn.starfallplain.CN_Ran.sfp.util.SoundUtil;
+import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -52,6 +54,14 @@ public class TrashBinListener implements Listener {
             if (holder.getPage() < manager.getPageCount() - 1) {
                 TrashBinCommand.openPage(plugin, player, manager, holder.getPage() + 1);
             }
+            return;
+        }
+        if (slot == TrashBinHolder.SLOT_BACK) {
+            // 返回主菜单：先关掉本界面，延迟一 tick 再打开，避免在点击事件里直接换 GUI
+            player.closeInventory();
+            Bukkit.getScheduler().runTask(plugin, () -> {
+                if (player.isOnline()) MenuManager.openMainMenu(plugin, player);
+            });
             return;
         }
         if (slot == TrashBinHolder.SLOT_INFO) {
