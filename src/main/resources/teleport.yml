@@ -60,14 +60,20 @@ tpa:
 
 # ---------- 传送通用 ----------
 teleport:
-  # 是否允许跨世界传送（false 时只能在本世界内传送到同名世界的位置）
-  allow-cross-world: true
-  # 传送前的等待时间（秒），0 = 立即传送
-  # 大于 0 时：先提示玩家，等待期间移动（跨越方块）或再次传送会打断本次传送
-  delay-seconds: 0
-  # 传送时是否播放音效（音效名见 util/SoundUtil）
-  sound: "ENTITY_ENDERMAN_TELEPORT"
+  # 传送前的等待时间（秒），0 = 立即传送；默认 3 秒。
+  # 等待期间：播放音效、在玩家脚下刷粒子；移动（跨越方块）或受到伤害会打断本次传送
+  delay-seconds: 3
+  # 等待期间刷粒子的间隔（tick，20 = 每秒一次）
+  particle-interval-ticks: 20
   # 是否使用安全落点（自动寻找上方/下方合适位置，避免卡在方块里）
   safe-location: true
-  # 安全落点向下搜索的最大距离
+  # 安全落点搜索的最大距离（格）
   safe-search-distance: 5
+  # 音效（Bukkit Sound 名称，留空 = 静音）
+  sounds:
+    # 等待开始时播一次
+    start: "BLOCK_NOTE_BLOCK_PLING"
+    # 等待期间每秒滴答
+    tick: "BLOCK_NOTE_BLOCK_HAT"
+    # 传送完成
+    teleport: "ENTITY_ENDERMAN_TELEPORT"

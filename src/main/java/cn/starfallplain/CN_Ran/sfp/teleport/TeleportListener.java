@@ -1,9 +1,11 @@
 package cn.starfallplain.CN_Ran.sfp.teleport;
 
 import cn.starfallplain.CN_Ran.sfp.config.module.TeleportConfig;
+import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
+import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
@@ -97,5 +99,12 @@ public class TeleportListener implements Listener {
     public void onQuit(PlayerQuitEvent event) {
         manager.cancelPending(event.getPlayer(), false);
         manager.recordOnQuit(event.getPlayer());
+    }
+
+    /** 受伤打断：等待期间受到任何伤害都取消传送 */
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onDamage(EntityDamageEvent event) {
+        if (!(event.getEntity() instanceof Player player)) return;
+        manager.cancelOnDamage(player);
     }
 }

@@ -44,11 +44,13 @@ public final class TeleportConfig extends AbstractConfig {
     private int tpaTeleportCooldownSeconds;
 
     // 通用传送
-    private boolean allowCrossWorld;
     private int delaySeconds;
-    private String teleportSound;
+    private int particleIntervalTicks;
     private boolean safeLocation;
     private int safeSearchDistance;
+    private String waitStartSound;
+    private String waitTickSound;
+    private String teleportSound;
 
     public TeleportConfig(JavaPlugin plugin) {
         super(plugin, "teleport.yml");
@@ -82,11 +84,13 @@ public final class TeleportConfig extends AbstractConfig {
         tpaRequestCooldownSeconds = Math.max(0, getInt("tpa.request-cooldown-seconds", 3));
         tpaTeleportCooldownSeconds = Math.max(0, getInt("tpa.teleport-cooldown-seconds", 3));
 
-        allowCrossWorld = getBoolean("teleport.allow-cross-world", true);
-        delaySeconds = Math.max(0, getInt("teleport.delay-seconds", 0));
-        teleportSound = getString("teleport.sound", "ENTITY_ENDERMAN_TELEPORT");
+        delaySeconds = Math.max(0, getInt("teleport.delay-seconds", 3));
+        particleIntervalTicks = Math.max(1, getInt("teleport.particle-interval-ticks", 20));
         safeLocation = getBoolean("teleport.safe-location", true);
         safeSearchDistance = Math.max(0, getInt("teleport.safe-search-distance", 5));
+        waitStartSound = getString("teleport.sounds.start", "BLOCK_NOTE_BLOCK_PLING");
+        waitTickSound = getString("teleport.sounds.tick", "BLOCK_NOTE_BLOCK_HAT");
+        teleportSound = getString("teleport.sounds.teleport", "ENTITY_ENDERMAN_TELEPORT");
     }
 
     // ==================== 访问器 ====================
@@ -133,13 +137,18 @@ public final class TeleportConfig extends AbstractConfig {
 
     public int getTpaTeleportCooldownSeconds() { return tpaTeleportCooldownSeconds; }
 
-    public boolean isAllowCrossWorld() { return allowCrossWorld; }
-
     public int getDelaySeconds() { return delaySeconds; }
 
-    public String getTeleportSound() { return teleportSound; }
+    /** 等待期间刷粒子的间隔（tick） */
+    public int getParticleIntervalTicks() { return particleIntervalTicks; }
 
     public boolean isSafeLocation() { return safeLocation; }
 
     public int getSafeSearchDistance() { return safeSearchDistance; }
+
+    public String getWaitStartSound() { return waitStartSound; }
+
+    public String getWaitTickSound() { return waitTickSound; }
+
+    public String getTeleportSound() { return teleportSound; }
 }

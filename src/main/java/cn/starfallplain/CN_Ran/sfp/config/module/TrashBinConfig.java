@@ -13,7 +13,6 @@ public final class TrashBinConfig extends AbstractConfig {
     // 每页格数（固定 45，可调小以留更多导航格）
     private int pageSize;
     private int maxItems;
-    private boolean global;
     private boolean saveImmediately;
 
     private String openSound;
@@ -28,7 +27,6 @@ public final class TrashBinConfig extends AbstractConfig {
         enabled = getBoolean("enabled", true);
         pageSize = getInt("page-size", 45);
         maxItems = getInt("max-items", 486);
-        global = getBoolean("global", true);
         saveImmediately = getBoolean("save-immediately", true);
         openSound = getString("sounds.open", "");
         takeSound = getString("sounds.take", "ENTITY_ITEM_PICKUP");
@@ -39,8 +37,6 @@ public final class TrashBinConfig extends AbstractConfig {
     public int getPageSize() { return pageSize; }
 
     public int getMaxItems() { return maxItems; }
-
-    public boolean isGlobal() { return global; }
 
     public boolean isSaveImmediately() { return saveImmediately; }
 

@@ -11,6 +11,7 @@ import cn.starfallplain.CN_Ran.sfp.util.SoundUtil;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.Particle;
 import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
@@ -200,24 +201,18 @@ public final class TeleportManager {
     // ==================== 传送执行 ====================
 
     /**
-     * 将玩家传送到目标位置（带安全落点、可选延迟与音效）。
+     * 将玩家传送到目标位置（带安全落点、可选延迟与音效/粒子）。
      * <p>
      * 若 teleport.yml 的 {@code teleport.delay-seconds} 大于 0，
-     * 则先发出倒计时提示、延迟执行；期间玩家移动或再次传送会打断。
+     * 则先提示玩家、播放音效、脚下刷粒子，延迟执行；期间移动（跨越方块）、
+     * 受到伤害或再次传送都会打断。
      *
-     * @param target            目标 StoredLocation
-     * @param crossWorldAllowed 是否允许跨世界（调用方按功能决定）
+     * @param target 目标 StoredLocation
      * @return 传送是否成功发起（延迟模式下为「已开始等待」）
      */
-    public boolean teleport(Player player, StoredLocation target, boolean crossWorldAllowed) {
+    public boolean teleport(Player player, StoredLocation target) {
         if (target == null) return false;
         if (!target.worldExists()) return false;
-        if (!crossWorldAllowed && !config.isAllowCrossWorld()) {
-            // 仅允许同世界
-            if (!player.getWorld().getName().equals(target.world())) {
-                return false;
-            }
-        }
 
         Location dest = target.toLocation();
         if (dest == null) return false;
@@ -248,7 +243,7 @@ public final class TeleportManager {
     }
 
     /**
-     * 发起一笔延迟传送：提示玩家并安排计划任务。
+     * 发起一笔延迟传送：提示玩家、播放音效、脚下刷粒子，并逐秒倒计时。
      * 若该玩家已有等待中的传送，先静默取消旧的。
      */
     private void startDelayedTeleport(Player player, Location dest, int delaySeconds) {
@@ -260,23 +255,69 @@ public final class TeleportManager {
         Map<String, String> ph = new HashMap<>();
         ph.put("seconds", String.valueOf(delaySeconds));
         plugin.getConfigManager().messages().send(player, "teleport.delayed",
-                "<yellow>将在 {seconds} 秒后传送，移动将打断。</yellow>", ph);
+                "<yellow>将在 {seconds} 秒后传送，移动或受伤将打断。</yellow>", ph);
+
+        // 等待开始音效
+        SoundUtil.play(player, player.getLocation(), config.getWaitStartSound(), 0.7f, 1.0f);
 
         UUID uuid = player.getUniqueId();
-        BukkitTask task = Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            PendingTeleport current = pendingTeleports.remove(uuid);
+        final int[] remaining = {delaySeconds};
+        BukkitTask task = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+            PendingTeleport current = pendingTeleports.get(uuid);
             if (current == null) return; // 已被打断
             if (!player.isOnline()) return;
-            // 执行前再校验世界是否仍存在
-            if (current.worldName() == null || Bukkit.getWorld(current.worldName()) == null) {
-                player.sendMessage(plugin.getMessage("teleport.world-missing",
-                        "<red>目标世界不存在或已被卸载。</red>"));
-                return;
+
+            remaining[0]--;
+
+            if (remaining[0] > 0) {
+                // 脚下刷粒子 + 滴答音效（最后一秒交给预加载与传送）
+                spawnParticles(player);
+                SoundUtil.play(player, player.getLocation(), config.getWaitTickSound(), 0.5f, 1.0f);
+            } else if (remaining[0] == 0) {
+                // 到达前最后一秒：预加载目标区块，避免传送后卡加载
+                preloadChunk(current.destination());
             }
-            executeTeleport(player, current.destination());
-        }, delaySeconds * 20L);
+
+            if (remaining[0] <= 0) {
+                current.task().cancel();
+                pendingTeleports.remove(uuid);
+                if (current.worldName() == null || Bukkit.getWorld(current.worldName()) == null) {
+                    player.sendMessage(plugin.getMessage("teleport.world-missing",
+                            "<red>目标世界不存在或已被卸载。</red>"));
+                    return;
+                }
+                executeTeleport(player, current.destination());
+            }
+        }, 20L, 20L);
 
         pendingTeleports.put(uuid, new PendingTeleport(dest, start, task, worldName));
+    }
+
+    /** 在玩家脚下刷传送门粒子（等待期间） */
+    private void spawnParticles(Player player) {
+        World world = player.getWorld();
+        if (world == null) return;
+        Location loc = player.getLocation().add(0, 0.5, 0);
+        world.spawnParticle(Particle.PORTAL, loc, 25, 0.35, 0.6, 0.35, 0.04);
+    }
+
+    /** 异步预加载目标那一个区块（不阻塞主线程，不加 ticket） */
+    private void preloadChunk(Location dest) {
+        World world = dest.getWorld();
+        if (world == null) return;
+        int chunkX = dest.getBlockX() >> 4;
+        int chunkZ = dest.getBlockZ() >> 4;
+        if (!world.isChunkLoaded(chunkX, chunkZ)) {
+            world.getChunkAtAsync(chunkX, chunkZ);
+        }
+    }
+
+    /** 玩家在等待期间受伤 → 取消传送（区别于移动打断的提示） */
+    public void cancelOnDamage(Player player) {
+        if (!hasPending(player)) return;
+        cancelPending(player, false);
+        player.sendMessage(plugin.getMessage("teleport.cancelled-damage",
+                "<red>传送已取消（你受到了伤害）。</red>"));
     }
 
     /**
@@ -373,7 +414,7 @@ public final class TeleportManager {
      */
     public boolean teleportToLocation(Player player, Location loc) {
         StoredLocation stored = StoredLocation.of(loc);
-        return teleport(player, stored, true);
+        return teleport(player, stored);
     }
 
     /**
@@ -381,5 +422,76 @@ public final class TeleportManager {
      */
     public void applyTeleportCooldown(Player player, int cooldownSeconds) {
         markCooldown(player, cooldownSeconds);
+    }
+
+    /**
+     * 传送到指定家（存在性 / 世界 / 冷却校验 + 传送 + 提示）。
+     * 供 /home 命令、家列表 GUI、dialogUI 列表共用，保证行为一致。
+     */
+    public void teleportHome(Player player, String name) {
+        StoredLocation target = homeStore.get(player.getUniqueId(), name);
+        if (target == null) {
+            Map<String, String> ph = new HashMap<>();
+            ph.put("name", name);
+            plugin.getConfigManager().messages().send(player, "home.not-found",
+                    "<red>不存在名为「{name}」的家。</red>", ph);
+            return;
+        }
+        if (!target.worldExists()) {
+            player.sendMessage(plugin.getMessage("teleport.world-missing",
+                    "<red>目标世界不存在或已被卸载。</red>"));
+            return;
+        }
+        long cd = getCooldownRemaining(player, config.getHomeTeleportCooldownSeconds());
+        if (cd > 0) {
+            Map<String, String> ph = new HashMap<>();
+            ph.put("seconds", String.valueOf(cd));
+            plugin.getConfigManager().messages().send(player, "teleport.cooldown",
+                    "<red>传送冷却中，请等待 {seconds} 秒。</red>", ph);
+            return;
+        }
+        if (teleport(player, target)) {
+            applyTeleportCooldown(player, config.getHomeTeleportCooldownSeconds());
+            Map<String, String> ph = new HashMap<>();
+            ph.put("name", name);
+            plugin.getConfigManager().messages().send(player, "home.teleport-success",
+                    "<green>已传送到家「{name}」。</green>", ph);
+        } else {
+            player.sendMessage(plugin.getMessage("teleport.failed", "<red>传送失败。</red>"));
+        }
+    }
+
+    /** 传送到指定公共传送点（与 teleportHome 同一套统一逻辑） */
+    public void teleportWarp(Player player, String name) {
+        StoredLocation target = warpStore.get(name);
+        if (target == null) {
+            Map<String, String> ph = new HashMap<>();
+            ph.put("name", name);
+            plugin.getConfigManager().messages().send(player, "warp.not-found",
+                    "<red>不存在名为「{name}」的传送点。</red>", ph);
+            return;
+        }
+        if (!target.worldExists()) {
+            player.sendMessage(plugin.getMessage("teleport.world-missing",
+                    "<red>目标世界不存在或已被卸载。</red>"));
+            return;
+        }
+        long cd = getCooldownRemaining(player, config.getWarpTeleportCooldownSeconds());
+        if (cd > 0) {
+            Map<String, String> ph = new HashMap<>();
+            ph.put("seconds", String.valueOf(cd));
+            plugin.getConfigManager().messages().send(player, "teleport.cooldown",
+                    "<red>传送冷却中，请等待 {seconds} 秒。</red>", ph);
+            return;
+        }
+        if (teleport(player, target)) {
+            applyTeleportCooldown(player, config.getWarpTeleportCooldownSeconds());
+            Map<String, String> ph = new HashMap<>();
+            ph.put("name", name);
+            plugin.getConfigManager().messages().send(player, "warp.teleport-success",
+                    "<green>已传送到「{name}」。</green>", ph);
+        } else {
+            player.sendMessage(plugin.getMessage("teleport.failed", "<red>传送失败。</red>"));
+        }
     }
 }

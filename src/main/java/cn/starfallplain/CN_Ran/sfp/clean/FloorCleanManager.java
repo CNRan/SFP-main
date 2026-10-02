@@ -125,7 +125,6 @@ public class FloorCleanManager {
         Map<String, String> ph = new HashMap<>();
         ph.put("count", String.valueOf(total));
         ph.put("time", cycleText);
-        ph.put("currency", plugin.getConfig().getString("currency-name", "星原币"));
 
         if (!toTrash) {
             String text = Messages.apply(messages.raw("clean.result-deleted",

@@ -63,7 +63,7 @@ public class BackCommand implements BasicCommand {
             return;
         }
 
-        boolean ok = manager.teleport(player, target, true);
+        boolean ok = manager.teleport(player, target);
         if (ok) {
             Map<String, String> ph = new HashMap<>();
             ph.put("location", target.describe());

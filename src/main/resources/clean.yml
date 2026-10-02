@@ -18,8 +18,6 @@ worlds:
   whitelist: []
   # 黑名单：永不清扫这些世界（优先级高于白名单）
   blacklist: []
-  # 是否只处理已加载的区块（Paper 下实体遍历本身只含已加载区块，通常保持 false）
-  only-loaded-chunks: false
 
 # 有自定义名称的物品（改名物品）是否跳过不扫（防止误清玩家命名物品）
 skip-named-items: true

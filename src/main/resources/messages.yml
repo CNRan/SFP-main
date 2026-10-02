@@ -60,6 +60,7 @@ teleport:
   # {seconds} 延迟传送等待秒数（teleport.delay-seconds > 0 时）
   delayed: "<yellow>将在 {seconds} 秒后传送，移动将打断。</yellow>"
   cancelled: "<red>传送已取消（位置发生变化）。</red>"
+  cancelled-damage: "<red>传送已取消（你受到了伤害）。</red>"
   prev: "<!i><yellow>上一页</yellow>"
   next: "<!i><yellow>下一页</yellow>"
   first: "<!i><dark_gray>首页</dark_gray>"
@@ -145,6 +146,7 @@ tpa:
   no-request: "<red>没有待处理的传送请求（可能已被处理或已过期）。</red>"
   not-found: "<red>没有来自「{name}」的待处理请求。</red>"
   target-offline: "<red>玩家「{name}」不在线。</red>"
+  no-targets: "<yellow>当前没有其他在线玩家。</yellow>"
   offline: "<red>对方已离线，请求已取消。</red>"
   self: "<red>不能向自己发起传送请求。</red>"
   replaced: "<red>你发给 {target} 的传送请求已被新的请求取代。</red>"

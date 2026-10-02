@@ -18,7 +18,6 @@ public final class ChairConfig extends AbstractConfig {
     private List<String> allowedWoods;
 
     private double seatHeightOffset;
-    private boolean standOnSneak;
     private boolean standOnBreak;
     private boolean standOnTeleport;
     private boolean ejectOnReclick;
@@ -39,7 +38,6 @@ public final class ChairConfig extends AbstractConfig {
                     "MANGROVE", "CHERRY", "BAMBOO", "CRIMSON", "WARPED");
         }
         seatHeightOffset = getDouble("seat-height-offset", 0.4);
-        standOnSneak = getBoolean("stand-on.sneak", true);
         standOnBreak = getBoolean("stand-on.break", true);
         standOnTeleport = getBoolean("stand-on.teleport", true);
         ejectOnReclick = getBoolean("stand-on.reclick", true);
@@ -56,8 +54,6 @@ public final class ChairConfig extends AbstractConfig {
     public List<String> getAllowedWoods() { return allowedWoods; }
 
     public double getSeatHeightOffset() { return seatHeightOffset; }
-
-    public boolean isStandOnSneak() { return standOnSneak; }
 
     public boolean isStandOnBreak() { return standOnBreak; }
 

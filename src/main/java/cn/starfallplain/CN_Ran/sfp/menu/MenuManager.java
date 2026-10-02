@@ -11,6 +11,8 @@ import cn.starfallplain.CN_Ran.sfp.teleport.gui.WarpListGui;
 import cn.starfallplain.CN_Ran.sfp.trashbin.TrashBinCommand;
 import cn.starfallplain.CN_Ran.sfp.trashbin.TrashBinManager;
 import cn.starfallplain.CN_Ran.sfp.ui.DialogMenu;
+import cn.starfallplain.CN_Ran.sfp.ui.DialogTeleportList;
+import cn.starfallplain.CN_Ran.sfp.ui.DialogTpaTarget;
 import cn.starfallplain.CN_Ran.sfp.ui.UiMode;
 import cn.starfallplain.CN_Ran.sfp.ui.UiPreferenceStore;
 import net.kyori.adventure.text.Component;
@@ -75,6 +77,17 @@ public class MenuManager {
             return false;
         }
         return true;
+    }
+
+    /** 按玩家偏好打开主菜单（dialogUI 或箱子），供 /menu 与各子界面的「返回」共用 */
+    public static void openMenuByPreference(StarfallplainMenu plugin, Player player) {
+        UiPreferenceStore store = plugin.getUiPreferenceStore();
+        UiMode mode = store != null ? store.get(player.getUniqueId()) : UiMode.DIALOG;
+        if (mode == UiMode.DIALOG) {
+            DialogMenu.open(plugin, player);
+        } else {
+            openMainMenu(plugin, player);
+        }
     }
 
     /**
@@ -171,7 +184,15 @@ public class MenuManager {
                     "<red>该功能当前未启用。</red>"));
             return;
         }
-        Bukkit.getScheduler().runTask(plugin, () -> HomeListGui.open(plugin, player, manager, 0));
+        UiPreferenceStore store = plugin.getUiPreferenceStore();
+        UiMode mode = store != null ? store.get(player.getUniqueId()) : UiMode.DIALOG;
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            if (mode == UiMode.DIALOG) {
+                DialogTeleportList.open(plugin, player, true, 0);
+            } else {
+                HomeListGui.open(plugin, player, manager, 0);
+            }
+        });
     }
 
     private static void openWarpList(StarfallplainMenu plugin, Player player) {
@@ -181,7 +202,15 @@ public class MenuManager {
                     "<red>该功能当前未启用。</red>"));
             return;
         }
-        Bukkit.getScheduler().runTask(plugin, () -> WarpListGui.open(plugin, player, manager, 0));
+        UiPreferenceStore store = plugin.getUiPreferenceStore();
+        UiMode mode = store != null ? store.get(player.getUniqueId()) : UiMode.DIALOG;
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            if (mode == UiMode.DIALOG) {
+                DialogTeleportList.open(plugin, player, false, 0);
+            } else {
+                WarpListGui.open(plugin, player, manager, 0);
+            }
+        });
     }
 
     private static void openTpaTarget(StarfallplainMenu plugin, Player player) {
@@ -190,7 +219,15 @@ public class MenuManager {
                     "<red>该功能当前未启用。</red>"));
             return;
         }
-        Bukkit.getScheduler().runTask(plugin, () -> TpaTargetGui.open(plugin, player, 0));
+        UiPreferenceStore store = plugin.getUiPreferenceStore();
+        UiMode mode = store != null ? store.get(player.getUniqueId()) : UiMode.DIALOG;
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            if (mode == UiMode.DIALOG) {
+                DialogTpaTarget.open(plugin, player, 0);
+            } else {
+                TpaTargetGui.open(plugin, player, 0);
+            }
+        });
     }
 
     /** 切换界面样式，并按新偏好重开菜单 */

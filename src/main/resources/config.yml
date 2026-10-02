@@ -25,8 +25,5 @@
 # 调试模式：开启后在控制台输出更详细的运行日志
 debug: false
 
-# 货币显示名称（用于文案中的 {currency} 占位符，经济系统本身仍由 Vault 提供）
-currency-name: "星原币"
-
 # 旧版菜单标题位置（兼容保留，新配置请用 menu.yml 的 title）
 menu-title: "<rainbow><b><i>星落平原 菜单</i></b></rainbow>"

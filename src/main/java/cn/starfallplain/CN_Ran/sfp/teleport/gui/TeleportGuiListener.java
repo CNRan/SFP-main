@@ -103,38 +103,11 @@ public class TeleportGuiListener implements Listener {
     // ==================== 家 ====================
 
     private void handleHomeTeleport(Player player, String name) {
-        TeleportConfig config = manager.getConfig();
-        if (!config.isHomeEnabled()) {
+        if (!manager.getConfig().isHomeEnabled()) {
             player.sendMessage(plugin.getMessage("common.feature-disabled", "<red>该功能当前未启用。</red>"));
             return;
         }
-        StoredLocation target = manager.getHomeStore().get(player.getUniqueId(), name);
-        if (target == null) {
-            Map<String, String> ph = new HashMap<>();
-            ph.put("name", name);
-            plugin.getConfigManager().messages().send(player, "home.not-found",
-                    "<red>不存在名为「{name}」的家。</red>", ph);
-            return;
-        }
-        if (!target.worldExists()) {
-            player.sendMessage(plugin.getMessage("teleport.world-missing",
-                    "<red>目标世界不存在或已被卸载。</red>"));
-            return;
-        }
-        long cd = manager.getCooldownRemaining(player, config.getHomeTeleportCooldownSeconds());
-        if (cd > 0) {
-            sendCooldown(player, cd);
-            return;
-        }
-        if (manager.teleport(player, target, true)) {
-            manager.applyTeleportCooldown(player, config.getHomeTeleportCooldownSeconds());
-            Map<String, String> ph = new HashMap<>();
-            ph.put("name", name);
-            plugin.getConfigManager().messages().send(player, "home.teleport-success",
-                    "<green>已传送到家「{name}」。</green>", ph);
-        } else {
-            player.sendMessage(plugin.getMessage("teleport.failed", "<red>传送失败。</red>"));
-        }
+        manager.teleportHome(player, name);
     }
 
     private void handleHomeDelete(Player player, String name) {
@@ -156,38 +129,11 @@ public class TeleportGuiListener implements Listener {
     // ==================== 传送点 ====================
 
     private void handleWarpTeleport(Player player, String name) {
-        TeleportConfig config = manager.getConfig();
-        if (!config.isWarpEnabled()) {
+        if (!manager.getConfig().isWarpEnabled()) {
             player.sendMessage(plugin.getMessage("common.feature-disabled", "<red>该功能当前未启用。</red>"));
             return;
         }
-        StoredLocation target = manager.getWarpStore().get(name);
-        if (target == null) {
-            Map<String, String> ph = new HashMap<>();
-            ph.put("name", name);
-            plugin.getConfigManager().messages().send(player, "warp.not-found",
-                    "<red>不存在名为「{name}」的传送点。</red>", ph);
-            return;
-        }
-        if (!target.worldExists()) {
-            player.sendMessage(plugin.getMessage("teleport.world-missing",
-                    "<red>目标世界不存在或已被卸载。</red>"));
-            return;
-        }
-        long cd = manager.getCooldownRemaining(player, config.getWarpTeleportCooldownSeconds());
-        if (cd > 0) {
-            sendCooldown(player, cd);
-            return;
-        }
-        if (manager.teleport(player, target, true)) {
-            manager.applyTeleportCooldown(player, config.getWarpTeleportCooldownSeconds());
-            Map<String, String> ph = new HashMap<>();
-            ph.put("name", name);
-            plugin.getConfigManager().messages().send(player, "warp.teleport-success",
-                    "<green>已传送到「{name}」。</green>", ph);
-        } else {
-            player.sendMessage(plugin.getMessage("teleport.failed", "<red>传送失败。</red>"));
-        }
+        manager.teleportWarp(player, name);
     }
 
     private void handleWarpDelete(Player player, String name) {

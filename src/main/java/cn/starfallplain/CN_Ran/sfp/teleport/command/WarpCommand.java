@@ -167,38 +167,7 @@ public class WarpCommand implements BasicCommand {
     }
 
     private boolean teleportWarp(Player player, String name) {
-        StoredLocation target = manager.getWarpStore().get(name);
-        if (target == null) {
-            Map<String, String> ph = new HashMap<>();
-            ph.put("name", name);
-            plugin.getConfigManager().messages().send(player, "warp.not-found",
-                    "<red>不存在名为「{name}」的传送点。</red>", ph);
-            return true;
-        }
-        if (!target.worldExists()) {
-            player.sendMessage(plugin.getMessage("teleport.world-missing",
-                    "<red>目标世界不存在或已被卸载。</red>"));
-            return true;
-        }
-
-        long cd = manager.getCooldownRemaining(player, manager.getConfig().getWarpTeleportCooldownSeconds());
-        if (cd > 0) {
-            Map<String, String> ph = new HashMap<>();
-            ph.put("seconds", String.valueOf(cd));
-            plugin.getConfigManager().messages().send(player, "teleport.cooldown",
-                    "<red>传送冷却中，请等待 {seconds} 秒。</red>", ph);
-            return true;
-        }
-
-        if (manager.teleport(player, target, true)) {
-            manager.applyTeleportCooldown(player, manager.getConfig().getWarpTeleportCooldownSeconds());
-            Map<String, String> ph = new HashMap<>();
-            ph.put("name", name);
-            plugin.getConfigManager().messages().send(player, "warp.teleport-success",
-                    "<green>已传送到「{name}」。</green>", ph);
-        } else {
-            player.sendMessage(plugin.getMessage("teleport.failed", "<red>传送失败。</red>"));
-        }
+        manager.teleportWarp(player, name);
         return true;
     }
 

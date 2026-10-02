@@ -18,7 +18,6 @@ public final class CleanConfig extends AbstractConfig {
     // 清扫范围
     private List<String> worldWhitelist;
     private List<String> worldBlacklist;
-    private boolean onlyLoadedChunks;
     private boolean skipNamedItems;
 
     // 是否把清扫物送入垃圾桶（关闭则直接删除，不经过垃圾桶）
@@ -46,7 +45,6 @@ public final class CleanConfig extends AbstractConfig {
         }
         worldWhitelist = getStringList("worlds.whitelist");
         worldBlacklist = getStringList("worlds.blacklist");
-        onlyLoadedChunks = getBoolean("worlds.only-loaded-chunks", false);
         skipNamedItems = getBoolean("skip-named-items", true);
         toTrashBin = getBoolean("to-trashbin", true);
         broadcastReminders = getBoolean("broadcast.reminders", true);
@@ -64,8 +62,6 @@ public final class CleanConfig extends AbstractConfig {
     public List<String> getWorldWhitelist() { return worldWhitelist; }
 
     public List<String> getWorldBlacklist() { return worldBlacklist; }
-
-    public boolean isOnlyLoadedChunks() { return onlyLoadedChunks; }
 
     public boolean isSkipNamedItems() { return skipNamedItems; }
 

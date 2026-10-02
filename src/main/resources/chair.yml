@@ -31,8 +31,6 @@ seat-height-offset: 0.4
 
 # 站起来的触发方式
 stand-on:
-  # 潜行（Shift）起身
-  sneak: true
   # 破坏椅子方块/告示牌时自动起身
   break: true
   # 传送离开时自动起身

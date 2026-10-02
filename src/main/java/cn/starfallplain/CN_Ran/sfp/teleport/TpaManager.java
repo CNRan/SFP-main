@@ -255,10 +255,10 @@ public final class TpaManager {
         // 统一走 TeleportManager，自动带上安全落点、延迟传送与音效
         boolean ok;
         if (p.type() == Type.TO) {
-            ok = teleportManager.teleport(from, StoredLocation.of(target.getLocation()), true);
+            ok = teleportManager.teleport(from, StoredLocation.of(target.getLocation()));
             if (ok) teleportManager.applyTeleportCooldown(from, config.getTpaTeleportCooldownSeconds());
         } else {
-            ok = teleportManager.teleport(target, StoredLocation.of(from.getLocation()), true);
+            ok = teleportManager.teleport(target, StoredLocation.of(from.getLocation()));
             if (ok) teleportManager.applyTeleportCooldown(target, config.getTpaTeleportCooldownSeconds());
         }
         if (!ok) {
