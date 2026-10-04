@@ -1,4 +1,4 @@
-# 星落平原（StarfallplainMenu）功能明细
+# 星落平原（SFP-main）功能明细
 
 > 本文档记录**每个功能的实现细节**：入口 → 调用链 → 流程 → 数据与配置。
 >
@@ -9,14 +9,14 @@
 
 - 插件形态：Paper 插件（`paper-plugin.yml`），Java 25，编译目标 paper-api 26.3
 - 插件名（`name`）：`SFP-main` —— 决定日志前缀与数据目录（`plugins/SFP-main/`）
-- 主类：`cn.starfallplain.CN_Ran.sfp.StarfallplainMenu`（类名/包名仍是旧的 StarfallplainMenu，与 name 无关）
+- 主类：`cn.starfallplain.sfpmain.SfpMain`（包名 `cn.starfallplain.sfpmain`、主类 `SfpMain`）
 - 元信息文件：`src/main/resources/paper-plugin.yml`（`version` 由 `${version}` 过滤）
 
 ---
 
 ## 0. 全局
 
-### 0.1 启动流程（`StarfallplainMenu#onEnable`）
+### 0.1 启动流程（`SfpMain#onEnable`）
 
 ```
 1) configManager = new ConfigManager(this)
@@ -70,7 +70,7 @@
 ### 0.3 命令注册机制
 
 Paper 插件不支持 `plugin.yml` 的 `commands` 段，全部命令在
-`StarfallplainMenu#registerCommands()` 里通过
+`SfpMain#registerCommands()` 里通过
 `getLifecycleManager().registerEventHandler(LifecycleEvents.COMMANDS, ...)` 注册。
 
 - 所有命令实现 `io.papermc.paper.command.brigadier.BasicCommand`。
@@ -626,7 +626,7 @@ SQLite 的 `ALTER TABLE` 限制：只能加列 / 改列名 / 删列（3.35+）�
       （集合字段务必在 `onLoaded()` 内 `new`）
 - [ ] `ConfigManager`：加字段 + 访问器 + `loadAll()` 实例化 + `describeState()` 补一行
 - [ ] 功能类构造器接收 `ConfigManager`，内部取 `configManager.xxx()`
-- [ ] `StarfallplainMenu`：加字段、`getXxxManager()`、`setupXxx()`（按 `isEnabled()` 决定是否注册）
+- [ ] `SfpMain`：加字段、`getXxxManager()`、`setupXxx()`（按 `isEnabled()` 决定是否注册）
 - [ ] 文案写进 `messages.yml`，代码用 `messages.raw/send`（不要硬编码中文到代码里，
       诊断类输出除外）
 - [ ] 若要命令：写 `XxxCommand implements BasicCommand`，在 `registerCommands()` 里注册，

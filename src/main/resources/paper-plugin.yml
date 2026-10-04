@@ -1,16 +1,16 @@
 # ============================================================
-#  星落平原（StarfallplainMenu）—— Paper 插件描述文件
+#  星落平原（SFP-main）—— Paper 插件描述文件
 # ============================================================
 #  本文件是 paper-plugin.yml（Paper 原生插件格式），不是旧的 Bukkit plugin.yml。
 #
 #  Paper 插件不支持 commands 段，命令必须在代码里注册：
-#    · 见 StarfallplainMenu#registerCommands（LifecycleEvents.COMMANDS）
+#    · 见 SfpMain#registerCommands（LifecycleEvents.COMMANDS）
 #  权限、依赖、加载顺序仍可用本文件声明。
 # ============================================================
 
 name: SFP-main
 version: '${version}'
-main: cn.starfallplain.CN_Ran.sfp.StarfallplainMenu
+main: cn.starfallplain.sfpmain.SfpMain
 
 # 最低可加载的 Paper 版本：26.1 / 26.2 / 26.3 均满足。
 # 编译目标为 26.3 API（见 pom.xml 的 paper.version）。
