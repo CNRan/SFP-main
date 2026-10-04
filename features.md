@@ -31,20 +31,22 @@
                          → 注册 TeleportListener / TeleportGuiListener / TpaListener
      setupBot()          假人：new BotManager，并 runTask 延后一 tick 执行 restoreOnStart()
      setupMenu()         菜单：注册 MenuListener（菜单本身是懒构建的，无状态）
+     setupMenuClock()    菜单钟：注册合成配方 + MenuClockListener（依赖主菜单已启用）
 3) registerCommands()   注册全部命令（依赖上面各 manager 已就位，故必须放最后）
 4) setupPlaceholders()  PAPI 可用时注册 %stf_cleantime% / %stf_cleantime_plain%
 5) 打印「功能状态」汇总（ConfigManager#describeState）
 ```
 
 `onDisable`：`trashBinManager.save()` → `teleportManager.shutdown()`（关 DB）→
-`tpaManager.shutdown()`（取消过期任务）→ `botManager.saveData() + shutdown()`。
+`tpaManager.shutdown()`（取消过期任务）→ `botManager.saveData() + shutdown()` →
+`menuClockManager.unregisterRecipe()`（注销菜单钟配方）。
 
 ### 0.2 配置体系
 
 | 文件 | 对应类 | 说明 |
 |---|---|---|
-| `config.yml` | `GlobalConfig` | 全局：`debug`、`currency-name`。**不继承 AbstractConfig**，直接走 `plugin.getConfig()` |
-| `menu.yml` | `MenuConfig` | 主菜单标题/尺寸/边框/按钮 |
+| `config.yml` | `GlobalConfig` | 全局：`debug`。**不继承 AbstractConfig**，直接走 `plugin.getConfig()` |
+| `menu.yml` | `MenuConfig` | 主菜单标题/尺寸/边框/按钮 + 菜单钟（`menu-clock`） |
 | `clean.yml` | `CleanConfig` | 自动扫地 |
 | `trashbin.yml` | `TrashBinConfig` | 垃圾桶 |
 | `chair.yml` | `ChairConfig` | 椅子 |
@@ -176,6 +178,30 @@ MenuCommand#execute
 - **dialogUI 按钮无左右键**，列表只保留「点击 = 传送 / 发起 tpa」主动作；删除用 `/delhome /delwarp`、`tpahere` 用 `/tpahere`（箱子 UI 保留右键）
 
 垃圾桶（需要取物品）保持箱子 UI，不做 dialogUI。
+
+### 1.1 菜单钟（`menu/MenuClockManager` + `menu/MenuClockListener`）
+
+**入口**：把一个泥土放进合成格（无序合成）→ 得到「菜单钟」→ 手持**右键**打开菜单。
+
+```
+合成：ShapelessRecipe(键 sfp-main:menu_clock, 结果=菜单钟)
+       材料来自 menu.yml 的 menu-clock.recipe.ingredients（默认 [DIRT]）
+       → 启动时 MenuClockManager#registerRecipe() 注册；插件禁用时 removeRecipe()
+右键：MenuClockListener#onInteract（PlayerInteractEvent）
+  → 只看主手 HAND，动作须为 RIGHT_CLICK_AIR / RIGHT_CLICK_BLOCK
+  → event.getItem() 经 MenuClockManager#isMenuClock 判定
+  → event.setCancelled(true) → MenuManager.openMenuByPreference(plugin, player)
+       （与 /menu 完全同一条路径：开关 / 权限 / dialogUI↔箱子偏好 全部一致）
+```
+
+- **识别方式用 PDC 标记**（键 `sfp-main:menu_clock_item`，BYTE=1），**不比对材质或显示名** ——
+  这样改了 `material` / `name` 后，玩家背包里已有的菜单钟仍能正常打开菜单，也不会把普通钟误判为菜单钟。
+- **附魔光效**用 `ItemMeta#setEnchantmentGlintOverride(true)`（Paper API），不消耗真实附魔。
+- **触发范围**由 `menu-clock.trigger` 决定：`both`（默认，看向方块/空气都触发，并取消该次方块交互）
+  或 `air`（只在没看向方块时触发，不干预开箱等方块交互）。
+- **依赖主菜单**：`menu.yml` 的 `enabled: false` 时连菜单钟一起不注册（避免合出来的钟点了没反应）。
+- 配置全在 `menu.yml` 的 `menu-clock` 段：`enabled / material / name / lore / glint / trigger /
+  recipe.enabled / recipe.ingredients`。
 
 ---
 

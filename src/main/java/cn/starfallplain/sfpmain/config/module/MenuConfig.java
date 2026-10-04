@@ -98,6 +98,16 @@ public final class MenuConfig extends AbstractConfig {
     private boolean showPlayerHead;
     private int playerHeadSlot;
 
+    // 菜单钟：把一个泥土放进合成格即可合成，手持右键打开菜单
+    private boolean menuClockEnabled;
+    private Material menuClockMaterial;
+    private String menuClockName;
+    private List<String> menuClockLore;
+    private boolean menuClockGlint;
+    private String menuClockTrigger;
+    private boolean menuClockRecipeEnabled;
+    private List<Material> menuClockIngredients;
+
     // 权限
     private String openPermission;
     private String permissionMessage;
@@ -119,6 +129,23 @@ public final class MenuConfig extends AbstractConfig {
 
         showPlayerHead = getBoolean("player-head.enabled", true);
         playerHeadSlot = getInt("player-head.slot", 4);
+
+        // 菜单钟
+        menuClockEnabled = getBoolean("menu-clock.enabled", true);
+        menuClockMaterial = readMaterial("menu-clock.material", Material.CLOCK);
+        menuClockName = getString("menu-clock.name", "<!i><rainbow>星落平原 菜单钟</rainbow>");
+        menuClockLore = getStringList("menu-clock.lore");
+        if (menuClockLore.isEmpty()) {
+            menuClockLore = List.of("<!i><gray>右键打开星落平原菜单</gray>");
+        }
+        menuClockGlint = getBoolean("menu-clock.glint", true);
+        menuClockTrigger = getString("menu-clock.trigger", "both").trim().toLowerCase();
+        menuClockRecipeEnabled = getBoolean("menu-clock.recipe.enabled", true);
+        menuClockIngredients = readMaterials("menu-clock.recipe.ingredients");
+        if (menuClockIngredients.isEmpty()) {
+            // 默认「一个泥土」：材质缺失或全部无效时兜底
+            menuClockIngredients = List.of(Material.DIRT);
+        }
 
         trashBinButtonId = getString("bind.trashbin-button", "trashbin");
         homeButtonId = getString("bind.home-button", "home");
@@ -204,6 +231,23 @@ public final class MenuConfig extends AbstractConfig {
     public boolean isShowPlayerHead() { return showPlayerHead; }
 
     public int getPlayerHeadSlot() { return playerHeadSlot; }
+
+    public boolean isMenuClockEnabled() { return menuClockEnabled; }
+
+    public Material getMenuClockMaterial() { return menuClockMaterial; }
+
+    public String getMenuClockName() { return menuClockName; }
+
+    public List<String> getMenuClockLore() { return menuClockLore; }
+
+    public boolean isMenuClockGlint() { return menuClockGlint; }
+
+    /** 触发方式：both=看向方块与空气都触发；air=只在不看向方块时触发（不拦截方块交互） */
+    public String getMenuClockTrigger() { return menuClockTrigger; }
+
+    public boolean isMenuClockRecipeEnabled() { return menuClockRecipeEnabled; }
+
+    public List<Material> getMenuClockIngredients() { return menuClockIngredients; }
 
     public String getOpenPermission() { return openPermission; }
 

@@ -84,6 +84,8 @@ public final class ConfigManager {
     public List<String> describeState(boolean papiAvailable) {
         List<String> lines = new ArrayList<>();
         lines.add(flagLine("菜单 /menu", menuConfig.isEnabled(), true));
+        lines.add("  · 菜单钟（右键开菜单）："
+                + (menuConfig.isEnabled() && menuConfig.isMenuClockEnabled() ? "已启用" : "已关闭（配置）"));
         lines.add(flagLine("自动扫地", cleanConfig.isEnabled(), true));
         lines.add(flagLine("垃圾桶", trashBinConfig.isEnabled(), true));
         lines.add(flagLine("椅子", chairConfig.isEnabled(), true));

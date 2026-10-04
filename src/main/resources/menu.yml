@@ -58,6 +58,32 @@ player-head:
   enabled: true
   slot: 4
 
+# ----------------------------------------------------------
+# 菜单钟：把材料放进合成格即可合成一个「钟」，手持右键打开菜单
+# ----------------------------------------------------------
+menu-clock:
+  # 是否启用菜单钟（同时也要求上方 enabled: true）
+  enabled: true
+  # 物品材质：CLOCK=钟（原版时钟），也可换 BELL（铃铛）/ COMPASS 等
+  material: CLOCK
+  # 显示名与描述（MiniMessage）
+  name: "<!i><rainbow>星落平原 菜单钟</rainbow>"
+  lore:
+    - "<!i><gray>右键打开星落平原菜单</gray>"
+    - "<!i><dark_gray>把一个泥土放进合成格即可合成</dark_gray>"
+  # 附魔光效（仅视觉效果，不附带真实附魔）
+  glint: true
+  # 触发方式：
+  #   both = 看向方块或空气都触发（默认，会拦截该次方块交互，行为可预期）
+  #   air  = 只在没看向方块时触发（不干扰开箱子等方块交互）
+  trigger: "both"
+  # 合成配方
+  recipe:
+    enabled: true
+    # 无序合成的材料列表（放几个就是几种材料，各 1 个）
+    ingredients:
+      - DIRT
+
 # 与功能模块的绑定（一般无需修改）
 bind:
   trashbin-button: "trashbin"

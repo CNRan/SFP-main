@@ -12,6 +12,8 @@ import cn.starfallplain.sfpmain.clean.CleanTimePlaceholder;
 import cn.starfallplain.sfpmain.clean.FloorCleanManager;
 import cn.starfallplain.sfpmain.config.ConfigManager;
 import cn.starfallplain.sfpmain.debug.SfpCommand;
+import cn.starfallplain.sfpmain.menu.MenuClockListener;
+import cn.starfallplain.sfpmain.menu.MenuClockManager;
 import cn.starfallplain.sfpmain.menu.MenuCommand;
 import cn.starfallplain.sfpmain.menu.MenuListener;
 import cn.starfallplain.sfpmain.teleport.TeleportListener;
@@ -63,6 +65,8 @@ public final class SfpMain extends JavaPlugin {
     private TabManager tabManager;
     /** 右侧计分板（display 包） */
     private ScoreboardManager scoreboardManager;
+    /** 菜单钟：合成获得、右键打开菜单（menu 包） */
+    private MenuClockManager menuClockManager;
 
     @Override
     public void onEnable() {
@@ -79,6 +83,7 @@ public final class SfpMain extends JavaPlugin {
         setupBot();
         setupUiPreferences();
         setupMenu();
+        setupMenuClock();
         setupTab();
         setupScoreboard();
 
@@ -126,6 +131,10 @@ public final class SfpMain extends JavaPlugin {
         }
         if (scoreboardManager != null) {
             scoreboardManager.shutdown();
+        }
+        // 注销菜单钟的合成配方（否则会留下一个合得出来但用不了的物品）
+        if (menuClockManager != null) {
+            menuClockManager.unregisterRecipe();
         }
         getLogger().info("SFP-main 已禁用！");
     }
@@ -287,6 +296,25 @@ public final class SfpMain extends JavaPlugin {
     }
 
     /**
+     * 菜单钟：合成得到的「钟」，手持右键打开菜单。
+     * <p>
+     * 依赖主菜单本身 —— 菜单关闭时不注册（否则合出来的钟点了没反应）。
+     */
+    private void setupMenuClock() {
+        if (!configManager.menu().isEnabled()) {
+            return;
+        }
+        if (!configManager.menu().isMenuClockEnabled()) {
+            getLogger().info("菜单钟：已按配置关闭。");
+            return;
+        }
+        menuClockManager = new MenuClockManager(this, configManager);
+        menuClockManager.registerRecipe();
+        getServer().getPluginManager().registerEvents(new MenuClockListener(this, menuClockManager), this);
+        getLogger().info("菜单钟已启用（右键打开菜单）。");
+    }
+
+    /**
      * 传送系统（/back /home /warp）：初始化 SQLite 数据层并注册监听器。
      * 命令在 {@link #registerCommands()} 中统一注册（此时 teleportManager 已存在）。
      */
@@ -404,5 +432,10 @@ public final class SfpMain extends JavaPlugin {
     /** 界面样式偏好存储 */
     public UiPreferenceStore getUiPreferenceStore() {
         return uiPreferenceStore;
+    }
+
+    /** 菜单钟管理器；菜单或菜单钟关闭时为 null */
+    public MenuClockManager getMenuClockManager() {
+        return menuClockManager;
     }
 }

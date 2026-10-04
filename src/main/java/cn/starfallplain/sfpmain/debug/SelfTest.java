@@ -5,6 +5,7 @@ import cn.starfallplain.sfpmain.chair.ChairManager;
 import cn.starfallplain.sfpmain.clean.FloorCleanManager;
 import cn.starfallplain.sfpmain.config.ConfigManager;
 import cn.starfallplain.sfpmain.config.module.MenuConfig;
+import cn.starfallplain.sfpmain.menu.MenuClockManager;
 import cn.starfallplain.sfpmain.menu.MenuHolder;
 import cn.starfallplain.sfpmain.menu.MenuManager;
 import cn.starfallplain.sfpmain.teleport.TeleportManager;
@@ -12,8 +13,11 @@ import cn.starfallplain.sfpmain.teleport.db.Database;
 import cn.starfallplain.sfpmain.trashbin.TrashBinManager;
 import cn.starfallplain.sfpmain.util.SoundUtil;
 import org.bukkit.Bukkit;
+import org.bukkit.Material;
+import org.bukkit.NamespacedKey;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -24,6 +28,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.StringJoiner;
 
 /**
  * 功能自检（{@code /sfp test}）：把配置、菜单、数据层、传送内容、各模块运行态过一遍，
@@ -233,6 +238,56 @@ public final class SelfTest {
         } catch (Throwable t) {
             r.fail("dialogUI 主菜单构建失败：" + t);
         }
+
+        checkMenuClock(plugin, r);
+    }
+
+    /** 菜单钟：合成配方是否已注册、物品能否构建并被自身识别 */
+    private static void checkMenuClock(SfpMain plugin, Report r) {
+        MenuConfig menu = plugin.getConfigManager().menu();
+        if (!menu.isMenuClockEnabled()) {
+            r.warn("菜单钟已按配置关闭（menu-clock.enabled=false）");
+            return;
+        }
+        MenuClockManager manager = plugin.getMenuClockManager();
+        if (manager == null) {
+            r.warn("菜单钟管理器未创建（主菜单可能被关闭）");
+            return;
+        }
+        r.ok("菜单钟材质 " + menu.getMenuClockMaterial().name()
+                + (menu.isMenuClockGlint() ? "（带附魔光效）" : ""));
+
+        if (menu.isMenuClockRecipeEnabled()) {
+            NamespacedKey key = new NamespacedKey(plugin, "menu_clock");
+            boolean registered = Bukkit.getRecipe(key) != null;
+            if (registered) {
+                r.ok("菜单钟合成配方已注册：" + describeIngredients(menu) + " → 菜单钟");
+            } else {
+                r.fail("菜单钟合成配方未注册（玩家无法合成；检查是否与其他插件配方键冲突）");
+            }
+        } else {
+            r.warn("菜单钟合成配方已按配置关闭（recipe.enabled=false）");
+        }
+
+        // 物品构建 + 自识别冒烟
+        try {
+            ItemStack item = manager.createItem();
+            if (manager.isMenuClock(item)) {
+                r.ok("菜单钟物品构建与识别正常");
+            } else {
+                r.fail("菜单钟物品构建后无法被识别（PDC 标记异常）");
+            }
+        } catch (Throwable t) {
+            r.fail("菜单钟物品构建失败：" + t);
+        }
+    }
+
+    private static String describeIngredients(MenuConfig menu) {
+        StringJoiner joiner = new StringJoiner(" + ");
+        for (Material material : menu.getMenuClockIngredients()) {
+            joiner.add(material.name());
+        }
+        return joiner.toString();
     }
 
     /** 把内部动作串翻译成人话 */
