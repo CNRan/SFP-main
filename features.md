@@ -245,7 +245,44 @@ MenuCommand#execute
 把「存在性 / 世界 / 冷却 / 传送 / 提示」的完整逻辑抽到 TeleportManager，
 命令、箱子 GUI、dialogUI 三处只调这一个方法，保证行为一致。
 
-### 2.2 `/back`（`BackCommand`）
+### 2.2 `/rtp` 随机传送（`RtpCommand` + `TeleportManager#randomTeleport`）
+
+```
+入口：/rtp（`RtpCommand`，无参数）
+前置：玩家 → sfpmenu.teleport → rtp.enabled → 当前世界在 rtp.worlds 白名单内 → rtp 冷却
+流程：
+  1) 校验通过后进入「选点中」状态（rtpInProgress，防并发重复发起）
+  2) 异步线程 findRandomLocation(worldName, origin)：
+       · 取 rtp.max-attempts 次机会，每次在 ±rtp.radius 的方形范围内随机取 (x,z)
+       · 若设了 rtp.min-distance，跳过离玩家太近的点
+       · 确保候选区块已加载（world.getChunkAt）后，在 (x,z) 列上自上而下
+         寻找第一处 isSafeSurface() 的落点（最多 rtp.max-vertical-search 格）
+  3) 回主线程 → StoredLocation.of(found) → 复用 teleport(player, target)
+     （经过统一的安全落点、3 秒等待、音效、粒子、受伤打断流程）
+  4) 成功后施加 rtp 冷却（rtp.cooldown-seconds，默认 600 = 10 分钟）并提示
+```
+
+- **只能由玩家执行**，控制台执行提示 `common.player-only`。
+- **世界白名单**：`rtp.worlds`（teleport.yml），默认仅 `world`（主世界）。
+  白名单为空表示所有世界都允许；填错世界名则在该世界执行只会提示
+  `rtp.world-not-allowed`。
+- **独立冷却**：`rtpCooldowns` 与普通传送冷却（home/warp/tpa）**互不影响**，反之亦然。
+- **选点安全判定**（`isSafeSurface`，比内核的 `isSafe` 更严格）：
+  脚下必须是实心、非可穿过、非液体、非危险方块（岩浆/岩浆块/篝火/火/仙人掌/甜浆果丛/细雪），
+  身位与头部必须可通行、非液体、非细雪。随机点最容易落在水面/岩浆上，故单独加强。
+- **选点在异步线程**：候选区块加载会阻塞，故 `findRandomLocation` 放在
+  `runTaskAsynchronously`；完成后用 `runTask` 回主线程执行传送与提示。
+  玩家在选点期间掉线时静默放弃（`Bukkit.getPlayer` 取不到即 return）。
+- **`/rtp` 与延迟打断**：随机传送本身走统一流程，因此在 3 秒等待期间移动/受伤
+  同样会打断（与 home/warp 一致）。
+- 权限：`sfpmenu.teleport`（与其余传送命令共用）。
+- 配置键：`rtp.enabled` / `rtp.worlds` / `rtp.radius` / `rtp.cooldown-seconds` /
+  `rtp.max-attempts` / `rtp.max-vertical-search` / `rtp.min-distance`。
+- 文案键：`rtp.searching` / `rtp.in-progress` / `rtp.success` / `rtp.cooldown` /
+  `rtp.world-not-allowed` / `rtp.failed`。
+- **不写数据库**：随机传送是纯即时行为，冷却存内存（`rtpCooldowns`），重启即清空。
+
+### 2.3 `/back`（`BackCommand`）
 
 ```
 权限 sfpmenu.teleport → back.enabled → isStorageAvailable()
@@ -270,7 +307,7 @@ MenuCommand#execute
 **只存一层**：`last_locations` 是 `ON CONFLICT(player_uuid) DO UPDATE`，每人一行覆盖写，
 不是历史栈。
 
-### 2.3 `/home` 系列（`HomeCommand`）
+### 2.4 `/home` 系列（`HomeCommand`）
 
 四个标签共用一个类，`action ∈ {home, sethome, delhome, homes}`。
 统一前置：玩家 → `sfpmenu.teleport` → `home.enabled` → `isStorageAvailable()`。
@@ -285,7 +322,7 @@ MenuCommand#execute
 
 补全：仅 `home` / `delhome` 的第一个参数补全家名。
 
-### 2.4 `/warp` 系列（`WarpCommand`）
+### 2.5 `/warp` 系列（`WarpCommand`）
 
 结构同 home，`action ∈ {warp, setwarp, delwarp, warps}`。
 统一前置：玩家 → `sfpmenu.teleport` → `warp.enabled` → `isStorageAvailable()`。

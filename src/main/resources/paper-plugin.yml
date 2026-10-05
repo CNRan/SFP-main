@@ -54,7 +54,7 @@ permissions:
     description: 允许打开星落平原菜单
     default: true
   sfpmenu.teleport:
-    description: 允许使用传送命令（/back /home /warp 等）
+    description: 允许使用传送命令（/back /home /warp /rtp 等）
     default: true
   sfpmenu.home.bypass-limit:
     description: 绕过家数量上限

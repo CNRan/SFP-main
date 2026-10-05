@@ -66,6 +66,7 @@ public final class SelfTest {
             "home.teleport-success", "home.set-success", "home.not-found",
             "warp.teleport-success", "warp.set-success", "warp.not-found",
             "back.no-location", "back.success",
+            "rtp.searching", "rtp.success", "rtp.cooldown", "rtp.world-not-allowed", "rtp.failed",
             "teleport.delayed", "teleport.cancelled", "teleport.cooldown", "teleport.world-missing",
             "tpa.request-to", "tpa.request-here", "tpa.gui-title", "tpa.no-request",
     };
@@ -120,8 +121,32 @@ public final class SelfTest {
         if (tp.getHomeMaxHomes() < -1) badTp.add("home.max-homes 小于 -1");
         if (tp.getSafeSearchDistance() <= 0) badTp.add("teleport.safe-search-distance 应大于 0");
         if (tp.getDbFile() == null || tp.getDbFile().isBlank()) badTp.add("database.file 为空");
+        if (tp.isRtpEnabled()) {
+            if (tp.getRtpRadius() < 1) badTp.add("rtp.radius 应大于 0");
+            if (tp.getRtpMaxAttempts() < 1) badTp.add("rtp.max-attempts 应大于 0");
+            if (tp.getRtpMaxVerticalSearch() < 1) badTp.add("rtp.max-vertical-search 应大于 0");
+        }
         if (badTp.isEmpty()) r.ok("teleport.yml 数值合法");
         else r.warn("teleport.yml：" + String.join("；", badTp));
+
+        // 随机传送：白名单里的世界是否真实存在
+        if (tp.isRtpEnabled()) {
+            var rtpWorlds = tp.getRtpWorlds();
+            if (rtpWorlds != null && !rtpWorlds.isEmpty()) {
+                List<String> missing = new ArrayList<>();
+                for (String name : rtpWorlds) {
+                    if (Bukkit.getWorld(name) == null) missing.add(name);
+                }
+                if (missing.isEmpty()) {
+                    r.ok("rtp.worlds 白名单世界均已加载：" + String.join("、", rtpWorlds));
+                } else {
+                    r.warn("rtp.worlds 中这些世界不存在或未加载（该世界无法随机传送）："
+                            + String.join("、", missing));
+                }
+            } else {
+                r.warn("rtp.worlds 为空，所有世界都允许随机传送（如需限制请填入世界名）");
+            }
+        }
 
         var clean = cm.clean();
         if (clean.getCycleSeconds() < 60) {
@@ -452,6 +477,14 @@ public final class SelfTest {
         DbDebug.send(sender, "<gray>  · 传送：</gray>" + (tp == null
                 ? "<dark_gray>未启动</dark_gray>"
                 : "<white>等待中的延迟传送 " + tp.pendingCount() + " 笔</white>"));
+
+        var rtpConfig = plugin.getConfigManager().teleport();
+        DbDebug.send(sender, "<gray>  · 随机传送（/rtp）：</gray>"
+                + (!rtpConfig.isEnabled() || !rtpConfig.isRtpEnabled()
+                        ? "<dark_gray>已关闭（teleport.yml 的 rtp.enabled）</dark_gray>"
+                        : "<white>范围 ±" + rtpConfig.getRtpRadius() + "，冷却 "
+                                + rtpConfig.getRtpCooldownSeconds() + " 秒，选点上限 "
+                                + rtpConfig.getRtpMaxAttempts() + " 次</white>"));
 
         cn.starfallplain.sfpmain.teleport.TpaManager tpa = plugin.getTpaManager();
         DbDebug.send(sender, "<gray>  · 玩家传送（/tpa）：</gray>" + (tpa == null

@@ -3,6 +3,9 @@ package cn.starfallplain.sfpmain.config.module;
 import cn.starfallplain.sfpmain.config.AbstractConfig;
 import org.bukkit.plugin.java.JavaPlugin;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * 传送系统配置（teleport.yml）。
  * <p>
@@ -42,6 +45,15 @@ public final class TeleportConfig extends AbstractConfig {
     private int tpaExpireSeconds;
     private int tpaRequestCooldownSeconds;
     private int tpaTeleportCooldownSeconds;
+
+    // rtp（随机传送）
+    private boolean rtpEnabled;
+    private List<String> rtpWorlds;
+    private int rtpRadius;
+    private int rtpCooldownSeconds;
+    private int rtpMaxAttempts;
+    private int rtpMaxVerticalSearch;
+    private int rtpMinDistance;
 
     // 通用传送
     private int delaySeconds;
@@ -83,6 +95,20 @@ public final class TeleportConfig extends AbstractConfig {
         tpaExpireSeconds = Math.max(5, getInt("tpa.expire-seconds", 60));
         tpaRequestCooldownSeconds = Math.max(0, getInt("tpa.request-cooldown-seconds", 3));
         tpaTeleportCooldownSeconds = Math.max(0, getInt("tpa.teleport-cooldown-seconds", 3));
+
+        rtpEnabled = getBoolean("rtp.enabled", true);
+        // 集合字段必须在 onLoaded() 内 new（见基类注释：不能依赖子类字段初始化器）
+        rtpWorlds = new ArrayList<>();
+        for (String world : getStringList("rtp.worlds")) {
+            if (world != null && !world.isBlank()) {
+                rtpWorlds.add(world.trim());
+            }
+        }
+        rtpRadius = Math.max(1, getInt("rtp.radius", 50000));
+        rtpCooldownSeconds = Math.max(0, getInt("rtp.cooldown-seconds", 600));
+        rtpMaxAttempts = Math.max(1, getInt("rtp.max-attempts", 32));
+        rtpMaxVerticalSearch = Math.max(1, getInt("rtp.max-vertical-search", 48));
+        rtpMinDistance = Math.max(0, getInt("rtp.min-distance", 0));
 
         delaySeconds = Math.max(0, getInt("teleport.delay-seconds", 3));
         particleIntervalTicks = Math.max(1, getInt("teleport.particle-interval-ticks", 20));
@@ -136,6 +162,22 @@ public final class TeleportConfig extends AbstractConfig {
     public int getTpaRequestCooldownSeconds() { return tpaRequestCooldownSeconds; }
 
     public int getTpaTeleportCooldownSeconds() { return tpaTeleportCooldownSeconds; }
+
+    public boolean isRtpEnabled() { return rtpEnabled; }
+
+    /** 允许随机传送的世界名白名单；空列表表示不限制 */
+    public List<String> getRtpWorlds() { return rtpWorlds; }
+
+    /** 随机范围半径：x、z 各自落在 ±radius 内 */
+    public int getRtpRadius() { return rtpRadius; }
+
+    public int getRtpCooldownSeconds() { return rtpCooldownSeconds; }
+
+    public int getRtpMaxAttempts() { return rtpMaxAttempts; }
+
+    public int getRtpMaxVerticalSearch() { return rtpMaxVerticalSearch; }
+
+    public int getRtpMinDistance() { return rtpMinDistance; }
 
     public int getDelaySeconds() { return delaySeconds; }
 

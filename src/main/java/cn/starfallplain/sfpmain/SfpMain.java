@@ -22,6 +22,7 @@ import cn.starfallplain.sfpmain.teleport.TpaListener;
 import cn.starfallplain.sfpmain.teleport.TpaManager;
 import cn.starfallplain.sfpmain.teleport.command.BackCommand;
 import cn.starfallplain.sfpmain.teleport.command.HomeCommand;
+import cn.starfallplain.sfpmain.teleport.command.RtpCommand;
 import cn.starfallplain.sfpmain.teleport.command.TpaCommand;
 import cn.starfallplain.sfpmain.teleport.command.WarpCommand;
 import cn.starfallplain.sfpmain.teleport.gui.TeleportGuiListener;
@@ -175,7 +176,7 @@ public final class SfpMain extends JavaPlugin {
     }
 
     /**
-     * 注册传送命令（/back /home /sethome /delhome /homes /warp /setwarp /delwarp /warps
+     * 注册传送命令（/back /rtp /home /sethome /delhome /homes /warp /setwarp /delwarp /warps
      * 以及 /tpa /tpahere /tpaccept /tpdeny /tpaui）。
      * <p>
      * {@code BackCommand} 等实现的是 {@link BasicCommand}，拿不到命令标签，
@@ -190,7 +191,7 @@ public final class SfpMain extends JavaPlugin {
                     getMessage("common.feature-disabled", "<red>该功能当前未启用。</red>"));
             for (String label : new String[]{"back", "home", "sethome", "delhome", "homes",
                     "warp", "setwarp", "delwarp", "warps",
-                    "tpa", "tpahere", "tpaccept", "tpdeny", "tpaui"}) {
+                    "tpa", "tpahere", "tpaccept", "tpdeny", "tpaui", "rtp"}) {
                 registrar.register(label, "传送功能（当前未启用）", disabled);
             }
             return;
@@ -198,6 +199,10 @@ public final class SfpMain extends JavaPlugin {
 
         registrar.register("back", "返回上一位置（上次传送前 / 死亡点）",
                 new BackCommand(this, teleportManager));
+
+        // /rtp 随机传送（无参数，在当前世界随机找点）
+        registrar.register("rtp", "随机传送（在允许的世界范围内随机找一处安全落点）",
+                new RtpCommand(this, teleportManager));
 
         // /home /sethome /delhome /homes 共用一套逻辑，用 action 区分
         registrar.register("home", "打开家列表或传送到指定家",
@@ -334,7 +339,7 @@ public final class SfpMain extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new TeleportGuiListener(this, teleportManager), this);
         getServer().getPluginManager().registerEvents(new TpaListener(tpaManager), this);
 
-        getLogger().info("传送系统已启动（/back /home /warp"
+        getLogger().info("传送系统已启动（/back /rtp /home /warp"
                 + (tpaManager.isEnabled() ? " /tpa /tpahere" : "") + "，数据存储于 SQLite）。");
     }
 

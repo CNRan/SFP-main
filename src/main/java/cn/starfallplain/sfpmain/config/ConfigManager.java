@@ -89,7 +89,8 @@ public final class ConfigManager {
         lines.add(flagLine("自动扫地", cleanConfig.isEnabled(), true));
         lines.add(flagLine("垃圾桶", trashBinConfig.isEnabled(), true));
         lines.add(flagLine("椅子", chairConfig.isEnabled(), true));
-        lines.add(flagLine("传送（/back /home /warp /tpa）", teleportConfig.isEnabled(), true));
+        lines.add(flagLine("传送（/back /home /warp /tpa /rtp）", teleportConfig.isEnabled(), true));
+        lines.add("  · 随机传送（/rtp）：" + describeRtp(teleportConfig));
         lines.add(flagLine("假人（/bot）", botConfig.isEnabled(), true));
         lines.add(flagLine("Tab 列表", tabConfig.isEnabled(), true));
         lines.add(flagLine("计分板", scoreboardConfig.isEnabled(), true));
@@ -101,6 +102,18 @@ public final class ConfigManager {
         if (!enabled) return "  · " + name + "：已关闭（配置）";
         if (!dependencyOk) return "  · " + name + "：已启用但缺少前置依赖，实际不可用";
         return "  · " + name + "：已启用";
+    }
+
+    /** 随机传送的状态描述：开关 / 世界白名单 / 半径 / 冷却 */
+    private String describeRtp(TeleportConfig config) {
+        if (!config.isEnabled() || !config.isRtpEnabled()) {
+            return "已关闭（配置）";
+        }
+        java.util.List<String> worlds = config.getRtpWorlds();
+        String worldText = (worlds == null || worlds.isEmpty())
+                ? "所有世界" : String.join("、", worlds);
+        return "已启用（世界：" + worldText + "，范围 ±" + config.getRtpRadius()
+                + "，冷却 " + config.getRtpCooldownSeconds() + " 秒）";
     }
 
     // ==================== 访问器 ====================

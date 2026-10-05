@@ -66,6 +66,21 @@ teleport:
   first: "<!i><dark_gray>首页</dark_gray>"
   last: "<!i><dark_gray>末页</dark_gray>"
 
+# ---------- 随机传送（/rtp）----------
+rtp:
+  # 开始寻找落点（选点涉及区块加载，可能需要一点时间）
+  searching: "<yellow>正在为你寻找合适的随机传送点……</yellow>"
+  # 已有一次选点在进行中
+  in-progress: "<yellow>正在为你寻找合适的随机传送点，请稍候……</yellow>"
+  # 找到并完成传送；{location} 目标坐标
+  success: "<green>已随机传送到（{location}）。</green>"
+  # {time} 剩余冷却（x分x秒）
+  cooldown: "<red>随机传送冷却中，请等待 {time}。</red>"
+  # {world} 当前世界名
+  world-not-allowed: "<red>当前世界（{world}）不允许随机传送。</red>"
+  # 多次尝试仍未找到安全落点
+  failed: "<red>没有找到合适的随机传送点，请稍后再试。</red>"
+
 # ---------- 返回（/back）----------
 back:
   # {location} 目标坐标

@@ -18,6 +18,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitTask;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -47,8 +48,12 @@ public final class TeleportManager {
     private final Map<UUID, Long> teleportCooldowns = new HashMap<>();
     /** 设置家冷却：玩家 UUID → 冷却结束时间（毫秒） */
     private final Map<UUID, Long> setHomeCooldowns = new HashMap<>();
+    /** 随机传送冷却：玩家 UUID → 冷却结束时间（毫秒），与普通传送冷却相互独立 */
+    private final Map<UUID, Long> rtpCooldowns = new HashMap<>();
     /** 内部传送标记：玩家 UUID → 标记过期时间（毫秒） */
     private final Map<UUID, Long> internalTeleportFlags = new HashMap<>();
+    /** 随机传送进行中标记：避免同一玩家并发发起多次（选点较重，需异步） */
+    private final java.util.Set<UUID> rtpInProgress = java.util.concurrent.ConcurrentHashMap.newKeySet();
     /** 延迟传送队列：玩家 UUID → 待执行的传送任务 */
     private final Map<UUID, PendingTeleport> pendingTeleports = new HashMap<>();
 
@@ -150,6 +155,209 @@ public final class TeleportManager {
         if (seconds <= 0) return;
         setHomeCooldowns.put(player.getUniqueId(),
                 System.currentTimeMillis() + seconds * 1000L);
+    }
+
+    // ==================== 随机传送（/rtp） ====================
+
+    /**
+     * 该世界是否允许随机传送（由 teleport.yml 的 {@code rtp.worlds} 白名单决定）。
+     * 白名单为空表示所有世界都允许。
+     */
+    public boolean isRtpWorldAllowed(World world) {
+        if (world == null) return false;
+        List<String> worlds = config.getRtpWorlds();
+        if (worlds == null || worlds.isEmpty()) return true;
+        return worlds.contains(world.getName());
+    }
+
+    /**
+     * 随机传送冷却剩余秒数；未冷却返回 0。
+     */
+    public long getRtpCooldownRemaining(Player player) {
+        int seconds = config.getRtpCooldownSeconds();
+        if (seconds <= 0) return 0;
+        Long until = rtpCooldowns.get(player.getUniqueId());
+        if (until == null) return 0;
+        long remainMs = until - System.currentTimeMillis();
+        if (remainMs <= 0) return 0;
+        return (remainMs + 999) / 1000;
+    }
+
+    private void markRtpCooldown(Player player) {
+        int seconds = config.getRtpCooldownSeconds();
+        if (seconds <= 0) return;
+        rtpCooldowns.put(player.getUniqueId(),
+                System.currentTimeMillis() + seconds * 1000L);
+    }
+
+    /** 该玩家是否正在选点（防止并发重复发起） */
+    public boolean isRtpInProgress(Player player) {
+        return rtpInProgress.contains(player.getUniqueId());
+    }
+
+    /**
+     * 发起一次随机传送。选点过程中会异步加载候选区块（避免卡主线程），
+     * 找到落点后回到主线程调用统一的 {@link #teleport(Player, StoredLocation)}，
+     * 从而复用延迟等待、音效、粒子、受伤打断等完整流程。
+     * <p>
+     * 冷却与「是否正在进行」由本方法统一判定并给出提示，调用方只负责发起。
+     */
+    public void randomTeleport(Player player) {
+        if (!player.isOnline()) return;
+        if (rtpInProgress.contains(player.getUniqueId())) {
+            player.sendMessage(plugin.getMessage("rtp.in-progress",
+                    "<yellow>正在为你寻找合适的随机传送点，请稍候……</yellow>"));
+            return;
+        }
+
+        World world = player.getWorld();
+        if (!isRtpWorldAllowed(world)) {
+            Map<String, String> ph = new HashMap<>();
+            ph.put("world", world != null ? world.getName() : "?");
+            plugin.getConfigManager().messages().send(player, "rtp.world-not-allowed",
+                    "<red>当前世界（{world}）不允许随机传送。</red>", ph);
+            return;
+        }
+
+        long cd = getRtpCooldownRemaining(player);
+        if (cd > 0) {
+            Map<String, String> ph = new HashMap<>();
+            ph.put("seconds", String.valueOf(cd));
+            ph.put("time", cn.starfallplain.sfpmain.util.TimeUtil.formatTime((int) cd));
+            plugin.getConfigManager().messages().send(player, "rtp.cooldown",
+                    "<red>随机传送冷却中，请等待 {time}。</red>", ph);
+            return;
+        }
+
+        rtpInProgress.add(player.getUniqueId());
+        plugin.getConfigManager().messages().send(player, "rtp.searching",
+                "<yellow>正在为你寻找合适的随机传送点……</yellow>", Map.of());
+
+        final UUID uuid = player.getUniqueId();
+        final Location origin = player.getLocation().clone();
+        // 在主线程从候选批次开始搜（区块一律走异步加载，不在异步线程碰世界数据）
+        tryNextCandidate(world, origin, uuid, 0);
+    }
+
+    /**
+     * 尝试第 {@code attempt} 个候选点：
+     * 先在主线程随机取一个 (x,z)，异步加载该区块，再回主线程判定落点是否安全；
+     * 不合格就继续下一个候选，直到 {@code rtp.max-attempts} 用尽。
+     * <p>
+     * 之所以拆成「取点 → 异步载区块 → 回主线程判定」的一步步链式调用，
+     * 是因为 {@code World#getChunkAt} 不能安全地在异步线程调用（Paper 明确禁止），
+     * 而异步加载又必须等回调才能读方块。
+     */
+    private void tryNextCandidate(World world, Location origin, UUID uuid, int attempt) {
+        Player player = Bukkit.getPlayer(uuid);
+        if (player == null || !player.isOnline()) {
+            rtpInProgress.remove(uuid);
+            return;
+        }
+        if (attempt >= config.getRtpMaxAttempts()) {
+            // 用尽尝试次数：放弃并清理状态
+            rtpInProgress.remove(uuid);
+            player.sendMessage(plugin.getMessage("rtp.failed",
+                    "<red>没有找到合适的随机传送点，请稍后再试。</red>"));
+            return;
+        }
+
+        int radius = config.getRtpRadius();
+        int minDistance = config.getRtpMinDistance();
+        // 用玩家 UUID 混合尝试序号做种子，保证每次点不同但又无需共享 Random 实例
+        java.util.Random random = new java.util.Random(
+                System.nanoTime() ^ (uuid.getMostSignificantBits() * (attempt + 1L)));
+        int x = random.nextInt(radius * 2 + 1) - radius;
+        int z = random.nextInt(radius * 2 + 1) - radius;
+
+        if (minDistance > 0) {
+            double dx = x - origin.getBlockX();
+            double dz = z - origin.getBlockZ();
+            if (Math.sqrt(dx * dx + dz * dz) < minDistance) {
+                // 太近，直接换下一个（不消耗异步加载）
+                tryNextCandidate(world, origin, uuid, attempt + 1);
+                return;
+            }
+        }
+
+        final int fx = x;
+        final int fz = z;
+        int chunkX = x >> 4;
+        int chunkZ = z >> 4;
+        world.getChunkAtAsync(chunkX, chunkZ).thenAccept(chunk -> Bukkit.getScheduler().runTask(plugin, () -> {
+            // 回到主线程后再读方块并判定
+            Player online = Bukkit.getPlayer(uuid);
+            if (online == null || !online.isOnline()) {
+                rtpInProgress.remove(uuid);
+                return;
+            }
+            Location safe = searchSafeColumn(world, fx, fz);
+            if (safe == null) {
+                tryNextCandidate(world, origin, uuid, attempt + 1);
+                return;
+            }
+            StoredLocation target = StoredLocation.of(safe);
+            if (target == null) {
+                tryNextCandidate(world, origin, uuid, attempt + 1);
+                return;
+            }
+            rtpInProgress.remove(uuid);
+            if (teleport(online, target)) {
+                markRtpCooldown(online);
+                Map<String, String> ph = new HashMap<>();
+                ph.put("location", target.describe());
+                plugin.getConfigManager().messages().send(online, "rtp.success",
+                        "<green>已随机传送到（{location}）。</green>", ph);
+            } else {
+                online.sendMessage(plugin.getMessage("teleport.failed", "<red>传送失败。</red>"));
+            }
+        }));
+    }
+
+    /**
+     * 在指定 (x, z) 列上从世界表面向下寻找一处安全落点。
+     * <p>
+     * 判定标准与 {@link #isSafe(World, int, int, int)} 一致：
+     * 脚下是实心非可穿过方块、身位与头部可通行；同时排除水/岩浆/仙人掌/虚空等危险面。
+     */
+    private Location searchSafeColumn(World world, int x, int z) {
+        int top = Math.min(world.getMaxHeight() - 2, world.getHighestBlockYAt(x, z) + 1);
+        int bottom = world.getMinHeight() + 1;
+        int maxSearch = config.getRtpMaxVerticalSearch();
+
+        int checked = 0;
+        for (int y = top; y >= bottom && checked < maxSearch; y--, checked++) {
+            if (isSafeSurface(world, x, y, z)) {
+                return new Location(world, x + 0.5, y, z + 0.5);
+            }
+        }
+        return null;
+    }
+
+    /**
+     * 随机传送专用的安全判定：比 {@link #isSafe} 更严格，
+     * 额外排除落点在液体/危险方块上的情况（随机点最常见的就是落在水面或岩浆上）。
+     */
+    private boolean isSafeSurface(World world, int x, int y, int z) {
+        Block below = world.getBlockAt(x, y - 1, z);
+        Block feet = world.getBlockAt(x, y, z);
+        Block head = world.getBlockAt(x, y + 1, z);
+
+        // 脚下必须有实心支撑，且不能是危险/液体方块
+        if (below.getType() == Material.AIR || below.isPassable()) return false;
+        if (below.isLiquid()) return false;
+        Material belowType = below.getType();
+        if (belowType == Material.MAGMA_BLOCK || belowType == Material.CACTUS
+                || belowType == Material.CAMPFIRE || belowType == Material.FIRE
+                || belowType == Material.SOUL_FIRE || belowType == Material.POWDER_SNOW
+                || belowType == Material.SWEET_BERRY_BUSH || belowType == Material.LAVA) {
+            return false;
+        }
+
+        // 身位与头部必须可通行且不是液体/危险方块
+        if (!feet.isPassable() || feet.isLiquid()) return false;
+        if (!head.isPassable() || head.isLiquid()) return false;
+        return feet.getType() != Material.POWDER_SNOW && head.getType() != Material.POWDER_SNOW;
     }
 
     // ==================== 记录位置（/back） ====================
