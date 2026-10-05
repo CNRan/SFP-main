@@ -50,7 +50,7 @@
 | `clean.yml` | `CleanConfig` | 自动扫地 |
 | `trashbin.yml` | `TrashBinConfig` | 垃圾桶 |
 | `chair.yml` | `ChairConfig` | 椅子 |
-| `teleport.yml` | `TeleportConfig` | 传送（back/home/warp/tpa + 数据库） |
+| `teleport.yml` | `TeleportConfig` | 传送（back/home/warp/tpa/rtp + 数据库） |
 | `bot.yml` | `BotConfig` | 假人 |
 | `tab.yml` | `TabConfig` | Tab 列表头部/底部（display 包） |
 | `scoreboard.yml` | `ScoreboardConfig` | 计分板（display 包） |
@@ -84,7 +84,7 @@ Paper 插件不支持 `plugin.yml` 的 `commands` 段，全部命令在
   代价是无权限的人在补全里仍能看到命令。
 - 模块被关闭时同名命令**仍然注册**，统一回「该功能当前未启用」，避免玩家以为命令不存在。
 
-已注册命令：`menu`(别名 `m`)、`trashbin`、`back`、`home`、`sethome`、`delhome`、`homes`、
+已注册命令：`menu`(别名 `m`)、`trashbin`、`back`、`rtp`、`home`、`sethome`、`delhome`、`homes`、
 `warp`、`setwarp`、`delwarp`、`warps`、`tpa`、`tpahere`、`tpaccept`、`tpdeny`、`tpaui`、`bot`、
 `menuui`、`sfp`。
 
@@ -93,7 +93,7 @@ Paper 插件不支持 `plugin.yml` 的 `commands` 段，全部命令在
 | 节点 | 默认 | 用于 |
 |---|---|---|
 | `sfpmenu.player` | true | 打开菜单、`/trashbin` |
-| `sfpmenu.teleport` | true | `/back` `/home` `/warp` `/tpa` 等全部传送命令 |
+| `sfpmenu.teleport` | true | `/back` `/rtp` `/home` `/warp` `/tpa` 等全部传送命令 |
 | `sfpmenu.home.bypass-limit` | false | 绕过家数量上限 |
 | `sfpmenu.warp.set` | op | `/setwarp`（也可在 teleport.yml 改空=人人可建） |
 | `sfpmenu.warp.delete` | op | `/delwarp` |
@@ -207,11 +207,11 @@ MenuCommand#execute
 
 ## 2. 传送系统（teleport 包）
 
-数据存 SQLite（`teleport.db`），会话态（tpa）存内存。详见 §8。
+数据存 SQLite（`teleport.db`），会话态（tpa）与随机传送冷却（rtp）存内存。详见 §8。
 
 ### 2.1 传送内核 `TeleportManager#teleport(player, target)`
 
-所有传送（back/home/warp/tpa/GUI 点击 / dialogUI 列表）都走这里，保证行为一致：
+所有传送（back/home/warp/tpa/rtp/GUI 点击 / dialogUI 列表）都走这里，保证行为一致：
 
 ```
 1) target == null / !worldExists()   → false（世界不存在/未加载）
@@ -239,7 +239,8 @@ MenuCommand#execute
 - 玩家退出、插件卸载时取消全部等待任务
 
 **冷却**：`getCooldownRemaining() / applyTeleportCooldown()` 由**调用方**决定是否使用。
-`/back` 不检查也不施加冷却；home/warp/tpa 各自有冷却。
+`/back` 不检查也不施加冷却；home/warp/tpa 各自有冷却（共用 `teleportCooldowns` 这一张表），
+`/rtp` 用**独立的** `rtpCooldowns`（见 §2.2）。
 
 **传送到家/传送点的统一入口**：`teleportHome(player, name)` / `teleportWarp(player, name)`
 把「存在性 / 世界 / 冷却 / 传送 / 提示」的完整逻辑抽到 TeleportManager，
@@ -332,7 +333,7 @@ MenuCommand#execute
 - 传送流程：存在 → `worldExists()` → 冷却(`warp.teleport-cooldown-seconds`) → `teleport()`。
 - 传送点全服共享，`warps` 表主键是 `warp_name`。
 
-### 2.5 `/tpa` `/tpahere` `/tpaccept` `/tpdeny` `/tpaui`（`TpaManager` + `TpaCommand`）
+### 2.6 `/tpa` `/tpahere` `/tpaccept` `/tpdeny` `/tpaui`（`TpaManager` + `TpaCommand`）
 
 **请求会话态不入库**（重启即失效；进库反而要处理过期清理）；
 **界面偏好入库**（`settings.db` 的 `tpa_ui_preferences`，见 §8）。
@@ -379,7 +380,7 @@ request(from, target, type)
 **清理**（`TpaListener` → `onQuit`）：玩家退出时，清掉①他作为接收者的请求（通知发起者）
 ②他作为发起者的请求（通知接收者）。`TpaManager#shutdown` 在插件卸载时取消全部过期任务。
 
-### 2.6 传送相关界面（gui 包）
+### 2.7 传送相关界面（gui 包）
 
 `TeleportGuiListener` 统一处理三个界面的点击（先判 `TpaTargetHolder`，再判 `TeleportListHolder`）。
 
