@@ -12,10 +12,14 @@ import cn.starfallplain.sfpmain.clean.CleanTimePlaceholder;
 import cn.starfallplain.sfpmain.clean.FloorCleanManager;
 import cn.starfallplain.sfpmain.config.ConfigManager;
 import cn.starfallplain.sfpmain.debug.SfpCommand;
+import cn.starfallplain.sfpmain.menu.MenuClockJoinListener;
 import cn.starfallplain.sfpmain.menu.MenuClockListener;
 import cn.starfallplain.sfpmain.menu.MenuClockManager;
 import cn.starfallplain.sfpmain.menu.MenuCommand;
 import cn.starfallplain.sfpmain.menu.MenuListener;
+import cn.starfallplain.sfpmain.punish.PunishListener;
+import cn.starfallplain.sfpmain.punish.PunishManager;
+import cn.starfallplain.sfpmain.punish.command.PunishCommand;
 import cn.starfallplain.sfpmain.teleport.TeleportListener;
 import cn.starfallplain.sfpmain.teleport.TeleportManager;
 import cn.starfallplain.sfpmain.teleport.TpaListener;
@@ -68,6 +72,8 @@ public final class SfpMain extends JavaPlugin {
     private ScoreboardManager scoreboardManager;
     /** 菜单钟：合成获得、右键打开菜单（menu 包） */
     private MenuClockManager menuClockManager;
+    /** 处罚系统：定时封禁 / 禁言 / 踢出 / 警告（punish 包，独立 punish.db） */
+    private PunishManager punishManager;
 
     @Override
     public void onEnable() {
@@ -87,6 +93,7 @@ public final class SfpMain extends JavaPlugin {
         setupMenuClock();
         setupTab();
         setupScoreboard();
+        setupPunish();
 
         // 3) 注册命令（依赖上面已建好的各管理器，故放在最后）
         registerCommands();
@@ -137,6 +144,10 @@ public final class SfpMain extends JavaPlugin {
         if (menuClockManager != null) {
             menuClockManager.unregisterRecipe();
         }
+        // 关闭处罚数据库连接
+        if (punishManager != null) {
+            punishManager.shutdown();
+        }
         getLogger().info("SFP-main 已禁用！");
     }
 
@@ -172,7 +183,42 @@ public final class SfpMain extends JavaPlugin {
 
             // 管理 / 调试命令 /sfp：reload / status / db / test
             registrar.register("sfp", "星落平原管理命令（输入 /sfp 查看用法）", new SfpCommand(this));
+
+            // 处罚系统命令（7 个）
+            registerPunishCommands(registrar);
         });
+    }
+
+    /**
+     * 注册处罚命令（/sfpcheck /sfpwarn /sfpkick /sfpban /sfpmute /sfpunban /sfpunmute）。
+     * <p>
+     * {@link BasicCommand} 拿不到命令标签，故每个标签各注册一个 {@link PunishCommand} 实例，
+     * 用构造参数区分动作。处罚模块关闭时仍注册同名命令，统一回「功能未启用」。
+     */
+    private void registerPunishCommands(Commands registrar) {
+        if (punishManager == null) {
+            BasicCommand disabled = (source, args) -> source.getSender().sendMessage(
+                    getMessage("common.feature-disabled", "<red>该功能当前未启用。</red>"));
+            for (String label : new String[]{"sfpcheck", "sfpwarn", "sfpkick", "sfpban",
+                    "sfpmute", "sfpunban", "sfpunmute"}) {
+                registrar.register(label, "处罚功能（当前未启用）", disabled);
+            }
+            return;
+        }
+        registrar.register("sfpcheck", "查询处罚记录（按处罚ID 或 玩家名）",
+                new PunishCommand(this, punishManager, "check"));
+        registrar.register("sfpwarn", "警告在线玩家",
+                new PunishCommand(this, punishManager, "warn"));
+        registrar.register("sfpkick", "踢出在线玩家",
+                new PunishCommand(this, punishManager, "kick"));
+        registrar.register("sfpban", "封禁玩家（可离线，需指定时间）",
+                new PunishCommand(this, punishManager, "ban"));
+        registrar.register("sfpmute", "禁言玩家（可离线，需指定时间）",
+                new PunishCommand(this, punishManager, "mute"));
+        registrar.register("sfpunban", "解除封禁（目标取自数据库）",
+                new PunishCommand(this, punishManager, "unban"));
+        registrar.register("sfpunmute", "解除禁言（目标取自数据库）",
+                new PunishCommand(this, punishManager, "unmute"));
     }
 
     /**
@@ -316,7 +362,29 @@ public final class SfpMain extends JavaPlugin {
         menuClockManager = new MenuClockManager(this, configManager);
         menuClockManager.registerRecipe();
         getServer().getPluginManager().registerEvents(new MenuClockListener(this, menuClockManager), this);
+        // 进服提示「可以合成菜单钟」
+        getServer().getPluginManager().registerEvents(
+                new MenuClockJoinListener(this, configManager.menu()), this);
         getLogger().info("菜单钟已启用（右键打开菜单）。");
+    }
+
+    /**
+     * 处罚系统：定时封禁 / 禁言 / 踢出 / 警告。
+     * <p>
+     * 数据存独立的 {@code punish.db}；命令在 {@link #registerCommands()} 里统一注册。
+     * 「惰性到期判定」靠 {@link PunishListener} 挂在进服 / 发言 / 查询时机上，不轮询。
+     */
+    private void setupPunish() {
+        if (!configManager.punish().isEnabled()) {
+            getLogger().info("处罚系统：已按配置关闭。");
+            return;
+        }
+        punishManager = new PunishManager(this, configManager.punish());
+        if (!punishManager.isStorageAvailable()) {
+            getLogger().warning("处罚数据库初始化失败，处罚功能将不可用。");
+        }
+        getServer().getPluginManager().registerEvents(new PunishListener(this, punishManager), this);
+        getLogger().info("处罚系统已启动（/sfpban /sfpmute /sfpkick /sfpwarn /sfpcheck，独立 punish.db）。");
     }
 
     /**
@@ -442,5 +510,10 @@ public final class SfpMain extends JavaPlugin {
     /** 菜单钟管理器；菜单或菜单钟关闭时为 null */
     public MenuClockManager getMenuClockManager() {
         return menuClockManager;
+    }
+
+    /** 处罚管理器；punish.yml 关闭时为 null */
+    public PunishManager getPunishManager() {
+        return punishManager;
     }
 }

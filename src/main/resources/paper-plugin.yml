@@ -19,7 +19,7 @@ api-version: '26.1'
 # 世界加载完成后再启用（与本插件原本的 POSTWORLD 行为一致，也是 Paper 插件默认值）
 load: POSTWORLD
 
-description: 星落平原整合插件：菜单(dialogUI/箱子) / 传送(back·home·warp·tpa) / 自动扫地 / 垃圾桶 / 椅子 / 假人
+description: 星落平原整合插件：菜单(dialogUI/箱子) / 传送(back·home·warp·tpa) / 自动扫地 / 垃圾桶 / 椅子 / 假人 / 处罚(封禁·禁言·踢出·警告)
 author: CN_Ran
 
 # 本插件使用 Bukkit 调度器与 PlayerMoveEvent，暂不兼容 Folia
@@ -70,4 +70,28 @@ permissions:
     default: op
   sfpmenu.bot:
     description: 允许使用 /bot 假人命令（创建会保持区块加载的假人）
+    default: op
+  # ----------------------------------------------------------
+  #  处罚系统权限（默认仅 OP）
+  # ----------------------------------------------------------
+  sfpmenu.punish.check:
+    description: 允许查询处罚记录（/sfpcheck）
+    default: op
+  sfpmenu.punish.warn:
+    description: 允许警告玩家（/sfpwarn）
+    default: op
+  sfpmenu.punish.kick:
+    description: 允许踢出玩家（/sfpkick）
+    default: op
+  sfpmenu.punish.ban:
+    description: 允许封禁玩家（/sfpban）
+    default: op
+  sfpmenu.punish.mute:
+    description: 允许禁言玩家（/sfpmute）
+    default: op
+  sfpmenu.punish.unban:
+    description: 允许解除封禁（/sfpunban）
+    default: op
+  sfpmenu.punish.unmute:
+    description: 允许解除禁言（/sfpunmute）
     default: op

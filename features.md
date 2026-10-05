@@ -11,6 +11,7 @@
 - 插件名（`name`）：`SFP-main` —— 决定日志前缀与数据目录（`plugins/SFP-main/`）
 - 主类：`cn.starfallplain.sfpmain.SfpMain`（包名 `cn.starfallplain.sfpmain`、主类 `SfpMain`）
 - 元信息文件：`src/main/resources/paper-plugin.yml`（`version` 由 `${version}` 过滤）
+- 当前版本：**2.7.0**（2.7.0 新增处罚系统 + 进服菜单钟提示 + 传送预热 ActionBar 倒计时）
 
 ---
 
@@ -31,7 +32,8 @@
                          → 注册 TeleportListener / TeleportGuiListener / TpaListener
      setupBot()          假人：new BotManager，并 runTask 延后一 tick 执行 restoreOnStart()
      setupMenu()         菜单：注册 MenuListener（菜单本身是懒构建的，无状态）
-     setupMenuClock()    菜单钟：注册合成配方 + MenuClockListener（依赖主菜单已启用）
+     setupMenuClock()    菜单钟：注册合成配方 + MenuClockListener + MenuClockJoinListener（依赖主菜单已启用）
+     setupPunish()       处罚：new PunishManager（内含独立 SQLite punish.db）→ 注册 PunishListener
 3) registerCommands()   注册全部命令（依赖上面各 manager 已就位，故必须放最后）
 4) setupPlaceholders()  PAPI 可用时注册 %stf_cleantime% / %stf_cleantime_plain%
 5) 打印「功能状态」汇总（ConfigManager#describeState）
@@ -39,7 +41,7 @@
 
 `onDisable`：`trashBinManager.save()` → `teleportManager.shutdown()`（关 DB）→
 `tpaManager.shutdown()`（取消过期任务）→ `botManager.saveData() + shutdown()` →
-`menuClockManager.unregisterRecipe()`（注销菜单钟配方）。
+`menuClockManager.unregisterRecipe()`（注销菜单钟配方）→ `punishManager.shutdown()`（关处罚 DB）。
 
 ### 0.2 配置体系
 
@@ -54,6 +56,7 @@
 | `bot.yml` | `BotConfig` | 假人 |
 | `tab.yml` | `TabConfig` | Tab 列表头部/底部（display 包） |
 | `scoreboard.yml` | `ScoreboardConfig` | 计分板（display 包） |
+| `punish.yml` | `PunishConfig` | 处罚系统（封禁/禁言/踢出/警告 + 数据库 + 全部处罚文案） |
 | `messages.yml` | `Messages` | 所有面向玩家的文案（**不继承 AbstractConfig**） |
 
 规则：
@@ -86,7 +89,7 @@ Paper 插件不支持 `plugin.yml` 的 `commands` 段，全部命令在
 
 已注册命令：`menu`(别名 `m`)、`trashbin`、`back`、`rtp`、`home`、`sethome`、`delhome`、`homes`、
 `warp`、`setwarp`、`delwarp`、`warps`、`tpa`、`tpahere`、`tpaccept`、`tpdeny`、`tpaui`、`bot`、
-`menuui`、`sfp`。
+`menuui`、`sfp`、`sfpcheck`、`sfpwarn`、`sfpkick`、`sfpban`、`sfpmute`、`sfpunban`、`sfpunmute`。
 
 ### 0.4 权限节点（`paper-plugin.yml` 的 `permissions` 段）
 
@@ -99,6 +102,13 @@ Paper 插件不支持 `plugin.yml` 的 `commands` 段，全部命令在
 | `sfpmenu.warp.delete` | op | `/delwarp` |
 | `sfpmenu.admin` | op | `/sfp`（reload / status / db / test） |
 | `sfpmenu.bot` | op | `/bot` |
+| `sfpmenu.punish.check` | op | `/sfpcheck` 查询处罚记录 |
+| `sfpmenu.punish.warn` | op | `/sfpwarn` 警告 |
+| `sfpmenu.punish.kick` | op | `/sfpkick` 踢出 |
+| `sfpmenu.punish.ban` | op | `/sfpban` 封禁 |
+| `sfpmenu.punish.mute` | op | `/sfpmute` 禁言 |
+| `sfpmenu.punish.unban` | op | `/sfpunban` 解封 |
+| `sfpmenu.punish.unmute` | op | `/sfpunmute` 解禁 |
 
 ### 0.5 调试与自检（`debug/` 包）
 
@@ -107,7 +117,7 @@ Paper 插件不支持 `plugin.yml` 的 `commands` 段，全部命令在
 | `/sfp reload` | `SfpCommand` → `plugin.reloadAll()` | 重载配置。**开关类改动仍需重启**（监听器注册不可逆） |
 | `/sfp status` | `SfpCommand` + `SelfTest#printRuntime` | 模块开关 + 各模块实时数据 |
 | `/sfp db [...]` | `DbDebug` | 概览 / `tables` / `homes` / `warps` / `back` / `check` / `checkpoint` |
-| `/sfp test` | `SelfTest#run` | 五段自检：配置、菜单、数据层、传送内容、功能模块 |
+| `/sfp test` | `SelfTest#run` | 六段自检：配置、菜单、传送数据层、传送内容、处罚系统、功能模块 |
 
 - 输出文案**写死在 `debug` 包内**（诊断条目多且高度动态，不进 messages.yml），门槛 `sfpmenu.admin`。
 - `/sfp db` 全是只读诊断，**刻意不提供执行任意 SQL**（前缀白名单挡不住 `SELECT 1; DROP TABLE x`
@@ -200,8 +210,11 @@ MenuCommand#execute
 - **触发范围**由 `menu-clock.trigger` 决定：`both`（默认，看向方块/空气都触发，并取消该次方块交互）
   或 `air`（只在没看向方块时触发，不干预开箱等方块交互）。
 - **依赖主菜单**：`menu.yml` 的 `enabled: false` 时连菜单钟一起不注册（避免合出来的钟点了没反应）。
+- **进服提示**：`MenuClockJoinListener`（2.7.0）在玩家进入时逐行发送
+  `menu-clock.join-notice`（menu.yml，多行 MiniMessage），提醒「可以合成菜单钟」。
+  仅在**主菜单 + 菜单钟都启用**时发送。
 - 配置全在 `menu.yml` 的 `menu-clock` 段：`enabled / material / name / lore / glint / trigger /
-  recipe.enabled / recipe.ingredients`。
+  join-notice / recipe.enabled / recipe.ingredients`。
 
 ---
 
@@ -226,11 +239,16 @@ MenuCommand#execute
      播放 teleport.sounds.teleport（默认 ENTITY_ENDERMAN_TELEPORT）
 ```
 
-**延迟传送（delay-seconds 默认 3 秒）**：`startDelayedTeleport()` 逐秒执行 ——
-- 开始时：提示 {seconds} + 播放 `teleport.sounds.start`（BLOCK_NOTE_BLOCK_PLING）
-- 每秒：脚下刷 PORTAL 粒子（`particle-interval-ticks` 控制频率）+ 播放 `teleport.sounds.tick`（BLOCK_NOTE_BLOCK_HAT）
-- 最后 1 秒：异步 `getChunkAtAsync` 预加载目标那**一个**区块（不加 ticket，传完自然卸载）
-- 到点：二次校验世界仍存在 → executeTeleport
+**延迟传送（delay-seconds 默认 3 秒）**：`startDelayedTeleport()` 以 **10 tick（0.5 秒）** 为步长执行 ——
+- 开始时：播放 `teleport.sounds.start`（BLOCK_NOTE_BLOCK_PLING）。
+- **每步（0.5 秒）**：向玩家发一条 **ActionBar 倒计时** —— 文案取 `messages.yml` 的
+  `teleport.actionbar`（默认 `<yellow>剩余 <white>{time}</white> 秒</yellow>`），
+  `{time}` 为剩余秒数（精确到 0.5，如「2.5」，整数则省去小数位，由 `formatSeconds` 处理）。
+- **每秒**（步长累计到整秒）：脚下刷 PORTAL 粒子（`particle-interval-ticks` 控制频率）
+  + 播放 `teleport.sounds.tick`（BLOCK_NOTE_BLOCK_HAT）。
+- **最后 1 秒**：异步 `getChunkAtAsync` 预加载目标那**一个**区块（不加 ticket，传完自然卸载）。
+- 到点：二次校验世界仍存在 → executeTeleport；并清空 ActionBar（`sendActionBar(empty)`）。
+- 被取消时（`cancelPending`）同样清空 ActionBar，避免倒计时残留在屏幕上。
 
 **延迟传送的打断条件**（`TeleportListener` / `TeleportManager`）：
 - 玩家**跨越方块坐标**（同一方块内的转头/微位移不算）
@@ -583,17 +601,113 @@ PlayerList#placeNewPlayer(connection, player, cookie)            ← 服务端�
 `Sign#getLine(int)`、`PlayerKickEvent#getReason()` 在 2.6.0 也都换成了 Adventure 版本
 （`customName(Component)`、`Sign#line(int)`、`reason()`）。
 
-## 8. 数据与持久化
+## 8. 处罚系统（punish 包）
+
+定时**封禁 / 禁言**、**踢出 / 警告**，外加查询与解除。数据存于**独立** `punish.db`
+（与 `teleport.db` 完全隔离：独立文件、独立连接，删库互不牵连）。
+
+### 8.1 命令一览
+
+| 命令 | 目标范围 | 时间参数 | 权限 |
+|---|---|---|---|
+| `/sfpcheck <处罚ID 或 玩家名>` | — | — | `sfpmenu.punish.check` |
+| `/sfpwarn <在线玩家> <原因>` | **仅在线** | — | `sfpmenu.punish.warn` |
+| `/sfpkick <在线玩家> <原因>` | **仅在线** | — | `sfpmenu.punish.kick` |
+| `/sfpban <玩家> <时间> <原因>` | 可离线 | 必填 | `sfpmenu.punish.ban` |
+| `/sfpmute <玩家> <时间> <原因>` | 可离线 | 必填 | `sfpmenu.punish.mute` |
+| `/sfpunban <玩家名>` | **仅数据库已封禁名单** | — | `sfpmenu.punish.unban` |
+| `/sfpunmute <玩家名>` | **仅数据库已禁言名单** | — | `sfpmenu.punish.unmute` |
+
+- **时间写法**：`7d` / `12h` / `1d2h30m` / `90s` / `perm`（永久），由 `util/DurationParser` 解析。
+  单位：`w`周 `d`天 `h`时 `m`分 `s`秒，可组合、可乱序。
+- **unban/unmute 的目标只来自数据库**（`PunishStore#listActiveNames`），**不使用在线玩家列表** ——
+  要解的几乎都是离线玩家。补全目标也是这份名单。
+- 目标解析顺序（`PunishManager#resolveTarget`）：在线玩家 → `players` 表 → `Bukkit.getOfflinePlayerIfCached`。
+- 命令反馈文案走 `messages.yml` 的 `punish.*` 键；
+  **踢下线整屏 / 禁言提示 / 全服广播**这类需要高度自定义的文案放 `punish.yml`（见 §8.4）。
+
+### 8.2 数据结构（三张表，`punish.db`）
+
+```
+players            uuid(PK) / name / last_seen
+                   → UUID ↔ 最近玩家名映射。处罚时记录，进服时补录。
+                     离线目标选择（ban/mute 离线玩家、unban 按名找 UUID）全靠它。
+
+punishments        punishment_id(PK) / player_uuid / player_name / type / reason /
+（当前生效）        operator / created_at / expire_at
+                   → 一人一类型最多一条（重新处罚会覆盖旧的）。
+                     expire_at = -1 表示永久；> 0 为到期毫秒时间戳。
+                     只存 BAN / MUTE（有时限的两种）。
+
+punishment_logs    log_id(AUTOINCREMENT) / punishment_id / player_uuid / player_name /
+（历史，只增不删）  type / reason / operator / created_at / expire_at / action / action_at
+                   → 每次「施加 / 解除 / 到期」各写一行。action 见 PunishAction：
+                     PUNISH / UNBAN / UNMUTE / EXPIRE。
+                     /sfpcheck 查的就是这张表（按 punishment_id 或玩家名）。
+```
+
+- **状态值「无处罚」**：需求里的「未获得处罚」是**状态**（该玩家当前没有任何生效处罚），
+  不是处罚类型。枚举 `PunishmentType` 只有 `BAN/MUTE/WARN/KICK`，其中 `isTimed()` 为 true 的
+  （BAN/MUTE）才写 `punishments` 表；WARN/KICK 只写历史表。
+- 表结构与迁移完全照搬 `teleport/Database` 的两步法（`SCHEMA_VERSION` + `PRAGMA user_version`
+  + `migrate(from)` 追加 `if (from < N)`），当前 v1。
+- 数据库不可用时静默降级：命令统一回「该功能当前未启用」，不抛异常。
+
+### 8.3 惰性到期判定（核心设计）
+
+**不轮询、不定时扫描**。`expire_at` 只在下面这些「必要时机」被检查，
+过期即删除生效记录 + 补一条 `EXPIRE` 历史日志：
+
+1. **玩家进服**（`PunishListener#onJoin`）—— 查 BAN（未过期则踢出）、查 MUTE（提示）；
+2. **玩家发言**（`PunishListener#onChat`）—— 查 MUTE；
+3. **`/sfpcheck` 查询**（`PunishManager#activePunishments`）；
+4. **解除时**（`PunishManager#revoke`）；
+5. **插件启动时**清理一次全库过期记录（`PunishStore#purgeExpired`）。
+
+**禁言判定在异步线程**（`AsyncChatEvent`），因此 `PunishManager` 维护一份
+**内存缓存** `activeCache`（`UUID → 类型 → Punishment`，`ConcurrentHashMap`）。缓存：
+- 启动时 `reloadCache()` 从库重建；
+- 每次 `apply/save → cachePut`、`revoke/expire → cacheRemove` 同步更新；
+- 聊天拦截走 `PunishManager#cachedMute`（**纯内存，不碰数据库连接**），只做内存级到期判定。
+
+> 库始终是唯一真相来源，缓存只是让异步判定安全的副本。
+
+### 8.4 文案（punish.yml）
+
+**本模块全部面向玩家的文案都放 `punish.yml`**（不回退 messages.yml）——
+「自定义踢人 / 封禁消息」是核心诉求，集中一处最好改。可用占位符：
+`{player}` `{operator}` `{reason}` `{type}` `{id}` `{expire}`（剩余）`{duration}`（总时长）。
+`{reason}` 会**原样作为 MiniMessage 解析**，所以处罚原因里可以直接写颜色标签。
+
+| 键 | 用途 |
+|---|---|
+| `messages.kick-screen-ban` | 被封禁者登录时的整屏文字（踢下线） |
+| `messages.kick-screen-kick` | 被 `/sfpkick` 踢出时的整屏文字 |
+| `messages.mute-notice` | 被禁言者发言时收到的提示 |
+| `messages.join-warn-notice` | 进服时的处罚提醒 |
+| `broadcast.enabled` / `broadcast.format` | 执行封禁/禁言时是否全服公告、公告格式 |
+
+`messages.yml` 里的 `punish.*` 是命令执行后的**简短反馈**（已 / 已警告 XX，编号 YYY）。
+
+### 8.5 处罚 ID
+
+6 位**字母数字混合**（字符集去掉了易混淆的 `0/O/1/I/l`），生成时用 `PunishStore#idExists` 查重，
+碰撞则重试（`SecureRandom`）。
+
+---
+
+## 9. 数据与持久化
 
 | 存储 | 文件 | 存放内容 | 代码 |
 |---|---|---|---|
 | SQLite | `teleport.db` | `homes` / `warps` / `last_locations` | `Database` + 三个 Store |
+| SQLite | `punish.db` | `players` / `punishments` / `punishment_logs` | `PunishDatabase` + `PunishStore` |
 | SQLite | `settings.db` | `ui_preferences`（界面样式偏好）、`tpa_ui_preferences`（传送回应界面偏好） | `UiPreferenceStore` |
 | YAML | `trashbin-data.yml` | 垃圾桶物品列表 | `TrashBinManager` |
 | YAML | `bots.yml` | 假人记录（用于重启重建） | `BotManager` |
-| 内存 | — | tpa 请求、传送冷却、延迟传送队列、在座玩家 | 各 Manager |
+| 内存 | — | tpa 请求、传送冷却、延迟传送队列、在座玩家、生效处罚缓存 | 各 Manager |
 
-### 8.1 传送数据库分层
+### 9.1 传送数据库分层
 
 ```
 TeleportManager
@@ -616,7 +730,7 @@ TeleportManager
   当前全部调用都在主线程（命令 / 事件 / GUI / 同步调度任务）。
   **若以后改成异步保存，必须给数据访问层补同步。**
 
-### 8.2 表结构迁移（改表结构必看）
+### 9.2 表结构迁移（改表结构必看）
 
 `Database` 里有 `SCHEMA_VERSION`，存在 SQLite 的 `PRAGMA user_version`。
 老库与新库的 `user_version` 都是 0，所以从 0 逐级判断能同时覆盖两种情况。
@@ -633,14 +747,14 @@ TeleportManager
 SQLite 的 `ALTER TABLE` 限制：只能加列 / 改列名 / 删列（3.35+），
 **不能**加「无默认值的 NOT NULL 列」，也不能改列类型或主键。
 
-### 8.3 备份建议
+### 9.3 备份建议
 
 正常停服后 `-wal` 会自动合并回 `teleport.db`，**直接拷 `teleport.db` 即可**；
 开服状态下想拷贝，先执行 `/sfp db checkpoint`。
 
 ---
 
-## 9. 改动时的注意事项（踩坑清单）
+## 10. 改动时的注意事项（踩坑清单）
 
 1. **改 `resources/*.yml` 里已存在键的默认值 → 必须手工同步服务器上的同名配置**。
    `mergeDefaults()` 只补缺失键、不覆盖已有键。**删按钮/删键也一样要手工删线上的**。
@@ -671,7 +785,7 @@ SQLite 的 `ALTER TABLE` 限制：只能加列 / 改列名 / 删列（3.35+）�
 
 ---
 
-## 10. 已知未生效 / 预留的配置项
+## 11. 已知未生效 / 预留的配置项
 
 以下五项曾在代码中「定义了但没人用」，**2.5.0 已全部删除**（配置键 + 代码访问器 + 引用一并清理）：
 
@@ -683,7 +797,7 @@ SQLite 的 `ALTER TABLE` 限制：只能加列 / 改列名 / 删列（3.35+）�
 | `trashbin.global` | 无引用；按玩家隔离未实现 |
 | `config.yml` 的 `currency-name` | `GlobalConfig#getCurrencyName()` 无调用点，扫地广播的 `{currency}` 占位符也是死代码 |
 
-## 11. 新增功能检查清单
+## 12. 新增功能检查清单
 
 - [ ] `resources/` 加 `xxx.yml`（首字段 `enabled`，注释写清每个键）
 - [ ] `config/module/XxxConfig.java` 继承 `AbstractConfig`，`onLoaded()` 里读值
@@ -696,8 +810,8 @@ SQLite 的 `ALTER TABLE` 限制：只能加列 / 改列名 / 删列（3.35+）�
 - [ ] 若要命令：写 `XxxCommand implements BasicCommand`，在 `registerCommands()` 里注册，
       权限节点补进 `paper-plugin.yml`
 - [ ] 若要界面：新建 Holder + Gui，点击统一挂在对应 Listener；导航行沿用 §2.6 的槽位约定
-- [ ] 数据持久化：能进 SQLite 的走 db 包（注意 §8.2 的迁移步骤）；
-      小数据用 YAML；**纯会话态一律放内存**
+- [ ] 数据持久化：能进 SQLite 的走 db 包（注意 §9.2 的迁移步骤）；
+      小数据用 YAML；**纯会话态一律放内存**；异步线程要读的数据放内存缓存（参考 §8.3）
 - [ ] 若绑定菜单按钮：`menu.yml` 加按钮 + `bind.*-button`，并按第 4 条改三个类
 - [ ] **把本功能写进 features.md**（入口 / 调用链 / 流程 / 配置键 / 权限 / 数据文件）
 - [ ] 构建 + 真机冒烟（`/sfp test` 应全绿；GUI 与交互需真人验证）

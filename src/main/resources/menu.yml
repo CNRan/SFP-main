@@ -83,6 +83,9 @@ menu-clock:
     # 无序合成的材料列表（放几个就是几种材料，各 1 个）
     ingredients:
       - DIRT
+  # 玩家进服时的提示（可多行；列表留空 = 不提示）。需要菜单钟处于启用状态才会发送
+  join-notice:
+    - "<!i><gray>把</gray><white>泥土</white><gray>放进合成格，就能合成</gray><rainbow>菜单钟</rainbow><gray>，手持右键即可打开菜单。</gray>"
 
 # 与功能模块的绑定（一般无需修改）
 bind:

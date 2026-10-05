@@ -1,0 +1,87 @@
+# ============================================================
+#  星落平原 —— 处罚系统配置（punish.yml）
+# ============================================================
+#  功能：警告 / 踢出 / 定时封禁 / 定时禁言，以及查询与解除。
+#  数据存于独立的 punish.db（SQLite），与传送数据完全隔离。
+#
+#  命令一览（权限节点见 paper-plugin.yml 的 permissions 段）：
+#    /sfpcheck  <处罚ID 或 玩家名>   查询处罚记录
+#    /sfpwarn   <在线玩家> <原因>     警告
+#    /sfpkick   <在线玩家> <原因>     踢出
+#    /sfpban    <玩家> <时间> <原因>   封禁（可对离线玩家）
+#    /sfpmute   <玩家> <时间> <原因>   禁言（可对离线玩家）
+#    /sfpunban  <玩家名>              解除封禁（目标取自数据库已封禁名单）
+#    /sfpunmute <玩家名>              解除禁言（目标取自数据库已禁言名单）
+#
+#  时间写法：7d=7天 / 12h / 1d2h30m / 90s / perm=永久
+# ============================================================
+
+enabled: true
+
+# ------------------------------------------------------------
+#  数据库（独立文件，不与其他功能共用）
+# ------------------------------------------------------------
+database:
+  # 数据库文件名（位于 plugins/SFP-main/ 目录下）
+  file: 'punish.db'
+  # 是否自动提交：true 简单省心；改成 false 则按批提交（本插件每次操作都会 commit）
+  auto-commit: true
+
+# ------------------------------------------------------------
+#  通用
+# ------------------------------------------------------------
+# 处罚原因留空时使用的默认原因
+default-reason: '违反服务器规则'
+# 「永久」的展示文本（占位符 {expire} / {duration} 会用它）
+permanent-text: '永久'
+
+# ------------------------------------------------------------
+#  音效（执行处罚 / 解除时播放给操作者；留空即静音）
+#  支持枚举名（ENTITY_VILLAGER_NO）或注册名（minecraft:entity.villager.no）
+# ------------------------------------------------------------
+sounds:
+  punish: 'ENTITY_VILLAGER_NO'
+  revoke: 'BLOCK_ANVIL_LAND'
+
+# ------------------------------------------------------------
+#  面向玩家的文案（MiniMessage 语法）
+#  可用占位符：{player} {operator} {reason} {type} {id} {expire} {duration}
+#    {expire}   剩余多久
+#    {duration} 本条处罚原本的时长
+#  注意：{reason} 会原样解析 MiniMessage —— 所以处罚原因里可以直接写颜色标签。
+# ------------------------------------------------------------
+messages:
+  # 玩家进服时若有未读处罚记录（当前仅用于提示，可按需修改）
+  join-warn-notice: '<yellow>提示：你当前有处罚记录，输入 <white>/sfpcheck {player}</white> 可查看。</yellow>'
+
+  # 被禁言者发言时收到的提示
+  mute-notice: |-
+    <red>你已被禁言</red>
+    <gray>原因：</gray><white>{reason}</white>
+    <gray>剩余时间：</gray><white>{expire}</white>
+
+  # 被封禁者尝试登录时看到的整屏文字（踢下线）
+  kick-screen-ban: |-
+    <dark_red><bold>你已被封禁</bold></dark_red>
+
+    <gray>处罚编号：</gray><white>{id}</white>
+    <gray>原因：</gray><white>{reason}</white>
+    <gray>剩余时间：</gray><white>{expire}</white>
+    <gray>操作者：</gray><white>{operator}</white>
+
+    <dark_gray>如有疑问，请联系服主申诉。</dark_gray>
+
+  # 被 /sfpkick 踢出时看到的整屏文字
+  kick-screen-kick: |-
+    <red><bold>你已被移出服务器</bold></red>
+
+    <gray>处罚编号：</gray><white>{id}</white>
+    <gray>原因：</gray><white>{reason}</white>
+    <gray>操作者：</gray><white>{operator}</white>
+
+# ------------------------------------------------------------
+#  全服广播：执行封禁 / 禁言时是否公告，以及公告格式
+# ------------------------------------------------------------
+broadcast:
+  enabled: true
+  format: '<gray>[</gray><red>处罚</red><gray>]</gray> <white>{player}</white> <gray>被</gray><yellow>{operator}</yellow><gray>执行</gray><red>{type}</red><gray>（</gray><white>{duration}</white><gray>）</gray><gray>，原因：</gray><white>{reason}</white>'

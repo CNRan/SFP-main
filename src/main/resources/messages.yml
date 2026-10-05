@@ -59,6 +59,8 @@ teleport:
   cooldown: "<red>传送冷却中，请等待 {seconds} 秒。</red>"
   # {seconds} 延迟传送等待秒数（teleport.delay-seconds > 0 时）
   delayed: "<yellow>将在 {seconds} 秒后传送，移动将打断。</yellow>"
+  # 等待期间 ActionBar 上的倒计时；{time} 为剩余秒数（精确到 0.5 秒，如「2.5」）
+  actionbar: "<yellow>剩余 <white>{time}</white> 秒</yellow>"
   cancelled: "<red>传送已取消（位置发生变化）。</red>"
   cancelled-damage: "<red>传送已取消（你受到了伤害）。</red>"
   prev: "<!i><yellow>上一页</yellow>"
@@ -213,3 +215,16 @@ menuui:
 # ---------- 菜单（menu 包）----------
 menu:
   head-name: "<!i><yellow>{player}</yellow>"
+
+# ---------- 处罚系统（punish 包）----------
+# 说明：踢下线整屏 / 禁言提示 / 全服广播等「需要高度自定义」的文案在 punish.yml；
+#       这里的都是命令执行后的简短反馈。可用占位符：{player} {operator} {reason} {id} {type} {duration}
+punish:
+  warn-received: "<red>你收到了一个警告。</red> <gray>原因：</gray><white>{reason}</white>"
+  warn-applied: "<green>已警告 </green><white>{player}</white><green>，编号 </green><yellow>{id}</yellow>"
+  kick-applied: "<green>已踢出 </green><white>{player}</white><green>，编号 </green><yellow>{id}</yellow>"
+  ban-applied: "<green>已封禁 </green><white>{player}</white><green>（</green><white>{duration}</white><green>），编号 </green><yellow>{id}</yellow>"
+  mute-applied: "<green>已禁言 </green><white>{player}</white><green>（</green><white>{duration}</white><green>），编号 </green><yellow>{id}</yellow>"
+  unban-applied: "<green>已解封 </green><white>{player}</white><green>，编号 </green><yellow>{id}</yellow>"
+  unmute-applied: "<green>已解除禁言 </green><white>{player}</white><green>，编号 </green><yellow>{id}</yellow>"
+

@@ -69,7 +69,22 @@ public final class SelfTest {
             "rtp.searching", "rtp.success", "rtp.cooldown", "rtp.world-not-allowed", "rtp.failed",
             "teleport.delayed", "teleport.cancelled", "teleport.cooldown", "teleport.world-missing",
             "tpa.request-to", "tpa.request-here", "tpa.gui-title", "tpa.no-request",
+            "punish.warn-received", "punish.warn-applied", "punish.kick-applied",
+            "punish.ban-applied", "punish.mute-applied", "punish.unban-applied", "punish.unmute-applied",
     };
+
+    /** 处罚数据库期望的表与列（schema 漂移检测） */
+    private static final Map<String, String[]> EXPECTED_PUNISH_COLUMNS = new LinkedHashMap<>();
+
+    static {
+        EXPECTED_PUNISH_COLUMNS.put("players", new String[]{"uuid", "name", "last_seen"});
+        EXPECTED_PUNISH_COLUMNS.put("punishments", new String[]{
+                "punishment_id", "player_uuid", "player_name", "type", "reason", "operator",
+                "created_at", "expire_at"});
+        EXPECTED_PUNISH_COLUMNS.put("punishment_logs", new String[]{
+                "log_id", "punishment_id", "player_uuid", "player_name", "type", "reason", "operator",
+                "created_at", "expire_at", "action", "action_at"});
+    }
 
     private SelfTest() {
     }
@@ -82,6 +97,7 @@ public final class SelfTest {
         checkMenu(plugin, r, sender);
         checkStorage(plugin, r);
         checkTeleportData(plugin, r);
+        checkPunish(plugin, r);
         checkModules(plugin, r, sender);
         DbDebug.send(sender, "<dark_gray>------------------------------------</dark_gray>");
         DbDebug.send(sender, "<gray>结果：</gray><green>通过 " + r.ok + "</green>　<yellow>注意 "
@@ -102,12 +118,13 @@ public final class SelfTest {
         loaded.put("trashbin.yml", cm.trashBin() != null && cm.trashBin().raw() != null);
         loaded.put("chair.yml", cm.chair() != null && cm.chair().raw() != null);
         loaded.put("teleport.yml", cm.teleport() != null && cm.teleport().raw() != null);
+        loaded.put("punish.yml", cm.punish() != null && cm.punish().raw() != null);
         List<String> notLoaded = new ArrayList<>();
         loaded.forEach((name, okFlag) -> {
             if (!okFlag) notLoaded.add(name);
         });
         if (notLoaded.isEmpty()) {
-            r.ok("7 个配置文件均已加载");
+            r.ok(loaded.size() + " 个配置文件均已加载");
         } else {
             r.fail("以下配置未能加载：" + String.join(", ", notLoaded));
         }
@@ -436,6 +453,75 @@ public final class SelfTest {
 
     // ==================== 功能模块 ====================
 
+    /** 处罚系统：数据库连通性 + 三张表结构 + 当前生效处罚数量 */
+    private static void checkPunish(SfpMain plugin, Report r) {
+        r.section("处罚系统");
+        var punishConfig = plugin.getConfigManager().punish();
+        if (!punishConfig.isEnabled()) {
+            r.warn("处罚系统未启用（punish.yml 的 enabled 为 false），跳过检查");
+            return;
+        }
+        var manager = plugin.getPunishManager();
+        if (manager == null) {
+            r.fail("处罚管理器未创建 —— 检查启动日志");
+            return;
+        }
+        if (!manager.isStorageAvailable()) {
+            r.fail("处罚数据库不可连接 —— 全部处罚命令不可用，请看启动日志");
+            return;
+        }
+        var db = manager.getDatabase();
+        r.ok("数据库可连接：" + db.getFile().getName()
+                + "（" + (db.getFile().length() / 1024) + " KB）");
+
+        Connection c = db.getConnection();
+        int actual = pragmaInt(c, "PRAGMA user_version");
+        int expected = cn.starfallplain.sfpmain.punish.PunishDatabase.expectedSchemaVersion();
+        if (actual == expected) {
+            r.ok("处罚表结构版本 v" + actual + "，与代码一致");
+        } else if (actual < expected) {
+            r.fail("处罚表结构版本 v" + actual + " 低于代码期望的 v" + expected + "（升级未生效）");
+        } else {
+            r.warn("处罚表结构版本 v" + actual + " 高于代码期望的 v" + expected + "（本插件不改动结构）");
+        }
+
+        for (Map.Entry<String, String[]> e : EXPECTED_PUNISH_COLUMNS.entrySet()) {
+            List<String> cols = columns(c, e.getKey());
+            if (cols.isEmpty()) {
+                r.fail("缺少表 " + e.getKey());
+                continue;
+            }
+            List<String> missing = new ArrayList<>();
+            for (String col : e.getValue()) {
+                if (!cols.contains(col)) missing.add(col);
+            }
+            if (missing.isEmpty()) r.ok("表 " + e.getKey() + " 列齐全（" + cols.size() + " 列）");
+            else r.fail("表 " + e.getKey() + " 缺少列：" + String.join(", ", missing));
+        }
+
+        // 当前生效的封禁 / 禁言数量（看一眼是不是有该清没清的）
+        int banned = countRows(c, "SELECT COUNT(*) FROM punishments WHERE type = 'ban'");
+        int muted = countRows(c, "SELECT COUNT(*) FROM punishments WHERE type = 'mute'");
+        r.ok("当前生效：封禁 " + banned + " 人，禁言 " + muted + " 人");
+
+        // 音效名有效性
+        List<String> badSounds = new ArrayList<>();
+        checkSound(punishConfig.getSoundPunish(), "sounds.punish", badSounds);
+        checkSound(punishConfig.getSoundRevoke(), "sounds.revoke", badSounds);
+        if (badSounds.isEmpty()) r.ok("处罚音效名全部有效");
+        else r.fail("以下处罚音效名无法解析（会无声）：" + String.join(", ", badSounds));
+    }
+
+    private static int countRows(Connection c, String sql) {
+        try (Statement st = c.createStatement(); ResultSet rs = st.executeQuery(sql)) {
+            return rs.next() ? rs.getInt(1) : 0;
+        } catch (SQLException e) {
+            return -1;
+        }
+    }
+
+    // ==================== 功能模块 ====================
+
     private static void checkModules(SfpMain plugin, Report r, CommandSender sender) {
         r.section("功能模块");
         boolean papi = Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null;
@@ -497,6 +583,14 @@ public final class SelfTest {
         DbDebug.send(sender, "<gray>  · 假人（/bot）：</gray>" + (bot == null
                 ? "<dark_gray>未启动</dark_gray>"
                 : "<white>" + bot.size() + " 个（已加入 " + bot.onlineCount() + "）</white>"));
+
+        cn.starfallplain.sfpmain.punish.PunishManager punish = plugin.getPunishManager();
+        DbDebug.send(sender, "<gray>  · 处罚系统：</gray>" + (punish == null
+                ? "<dark_gray>未启动</dark_gray>"
+                : (punish.isStorageAvailable()
+                        ? "<white>数据库就绪（封禁 " + punish.bannedNames().size()
+                                + " 人 / 禁言 " + punish.mutedNames().size() + " 人）</white>"
+                        : "<red>数据库不可用</red>")));
     }
 
     // ==================== 工具 ====================

@@ -4,6 +4,7 @@ import cn.starfallplain.sfpmain.config.module.BotConfig;
 import cn.starfallplain.sfpmain.config.module.ChairConfig;
 import cn.starfallplain.sfpmain.config.module.CleanConfig;
 import cn.starfallplain.sfpmain.config.module.MenuConfig;
+import cn.starfallplain.sfpmain.config.module.PunishConfig;
 import cn.starfallplain.sfpmain.config.module.ScoreboardConfig;
 import cn.starfallplain.sfpmain.config.module.TabConfig;
 import cn.starfallplain.sfpmain.config.module.TeleportConfig;
@@ -48,6 +49,7 @@ public final class ConfigManager {
     private BotConfig botConfig;
     private TabConfig tabConfig;
     private ScoreboardConfig scoreboardConfig;
+    private PunishConfig punishConfig;
 
     public ConfigManager(JavaPlugin plugin) {
         this.plugin = plugin;
@@ -68,6 +70,7 @@ public final class ConfigManager {
         botConfig = new BotConfig(plugin);
         tabConfig = new TabConfig(plugin);
         scoreboardConfig = new ScoreboardConfig(plugin);
+        punishConfig = new PunishConfig(plugin);
     }
 
     /** 重载所有配置（含 messages） */
@@ -94,6 +97,7 @@ public final class ConfigManager {
         lines.add(flagLine("假人（/bot）", botConfig.isEnabled(), true));
         lines.add(flagLine("Tab 列表", tabConfig.isEnabled(), true));
         lines.add(flagLine("计分板", scoreboardConfig.isEnabled(), true));
+        lines.add(flagLine("处罚系统（/sfpban /sfpmute /sfpkick /sfpwarn）", punishConfig.isEnabled(), true));
         lines.add("  · 扫地倒计时 PAPI 占位符：" + (papiAvailable ? "可用" : "不可用（缺少 PlaceholderAPI）"));
         return lines;
     }
@@ -160,5 +164,9 @@ public final class ConfigManager {
 
     public ScoreboardConfig scoreboard() {
         return scoreboardConfig;
+    }
+
+    public PunishConfig punish() {
+        return punishConfig;
     }
 }

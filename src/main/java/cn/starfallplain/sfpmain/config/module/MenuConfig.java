@@ -107,6 +107,8 @@ public final class MenuConfig extends AbstractConfig {
     private String menuClockTrigger;
     private boolean menuClockRecipeEnabled;
     private List<Material> menuClockIngredients;
+    /** 玩家进服时提示「可以合成菜单钟」的消息（列表，逐行发送；空 = 不提示） */
+    private List<String> menuClockJoinNotice;
 
     // 权限
     private String openPermission;
@@ -145,6 +147,13 @@ public final class MenuConfig extends AbstractConfig {
         if (menuClockIngredients.isEmpty()) {
             // 默认「一个泥土」：材质缺失或全部无效时兜底
             menuClockIngredients = List.of(Material.DIRT);
+        }
+        // 进服提示（列表；空的列表表示不提示）
+        menuClockJoinNotice = getStringList("menu-clock.join-notice");
+        if (menuClockJoinNotice.isEmpty()) {
+            menuClockJoinNotice = List.of(
+                    "<!i><gray>把</gray><white>泥土</white><gray>放进合成格，就能合成</gray>"
+                            + "<rainbow>菜单钟</rainbow><gray>，手持右键即可打开菜单。</gray>");
         }
 
         trashBinButtonId = getString("bind.trashbin-button", "trashbin");
@@ -248,6 +257,9 @@ public final class MenuConfig extends AbstractConfig {
     public boolean isMenuClockRecipeEnabled() { return menuClockRecipeEnabled; }
 
     public List<Material> getMenuClockIngredients() { return menuClockIngredients; }
+
+    /** 进服提示（可多行）；空列表表示不提示 */
+    public List<String> getMenuClockJoinNotice() { return menuClockJoinNotice; }
 
     public String getOpenPermission() { return openPermission; }
 

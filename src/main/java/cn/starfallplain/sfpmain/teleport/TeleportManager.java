@@ -453,6 +453,9 @@ public final class TeleportManager {
     /**
      * 发起一笔延迟传送：提示玩家、播放音效、脚下刷粒子，并逐秒倒计时。
      * 若该玩家已有等待中的传送，先静默取消旧的。
+     * <p>
+     * 倒计时用 ActionBar 显示剩余时间，精度 0.5 秒（每 10 tick 刷新一次）；
+     * 音效与粒子仍按每秒（20 tick）触发一次，避免过于聒噪。
      */
     private void startDelayedTeleport(Player player, Location dest, int delaySeconds) {
         cancelPending(player, false);
@@ -469,26 +472,38 @@ public final class TeleportManager {
         SoundUtil.play(player, player.getLocation(), config.getWaitStartSound(), 0.7f, 1.0f);
 
         UUID uuid = player.getUniqueId();
-        final int[] remaining = {delaySeconds};
+        // 以 10 tick（0.5 秒）为步长驱动，ActionBar 显示剩余时间精确到 0.5 秒
+        final int totalTicks = delaySeconds * 20;
+        final int[] elapsedTicks = {0};
         BukkitTask task = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
             PendingTeleport current = pendingTeleports.get(uuid);
             if (current == null) return; // 已被打断
             if (!player.isOnline()) return;
 
-            remaining[0]--;
+            elapsedTicks[0] += 10;
+            final double remaining = Math.max(0, (totalTicks - elapsedTicks[0]) / 20.0);
 
-            if (remaining[0] > 0) {
-                // 脚下刷粒子 + 滴答音效（最后一秒交给预加载与传送）
-                spawnParticles(player);
-                SoundUtil.play(player, player.getLocation(), config.getWaitTickSound(), 0.5f, 1.0f);
-            } else if (remaining[0] == 0) {
-                // 到达前最后一秒：预加载目标区块，避免传送后卡加载
+            if (elapsedTicks[0] < totalTicks) {
+                // ActionBar 剩余时间（一位小数，如「剩余 2.5 秒」）
+                player.sendActionBar(plugin.getConfigManager().messages().component("teleport.actionbar",
+                        "<yellow>剩余 <white>{time}</white> 秒</yellow>")
+                        .replaceText(b -> b.matchLiteral("{time}")
+                                .replacement(formatSeconds(remaining))));
+                // 每满 1 秒：粒子 + 滴答音效
+                if (elapsedTicks[0] % 20 == 0) {
+                    spawnParticles(player);
+                    SoundUtil.play(player, player.getLocation(), config.getWaitTickSound(), 0.5f, 1.0f);
+                }
+            } else {
+                // 到达前最后一刻：预加载目标区块，避免传送后卡加载
                 preloadChunk(current.destination());
             }
 
-            if (remaining[0] <= 0) {
+            if (elapsedTicks[0] >= totalTicks) {
                 current.task().cancel();
                 pendingTeleports.remove(uuid);
+                // 清掉 ActionBar，避免残留倒计时
+                player.sendActionBar(net.kyori.adventure.text.Component.empty());
                 if (current.worldName() == null || Bukkit.getWorld(current.worldName()) == null) {
                     player.sendMessage(plugin.getMessage("teleport.world-missing",
                             "<red>目标世界不存在或已被卸载。</red>"));
@@ -496,9 +511,17 @@ public final class TeleportManager {
                 }
                 executeTeleport(player, current.destination());
             }
-        }, 20L, 20L);
+        }, 10L, 10L);
 
         pendingTeleports.put(uuid, new PendingTeleport(dest, start, task, worldName));
+    }
+
+    /** 秒数格式化为「2.5」这种保留一位小数的字符串（整数则省略小数位） */
+    private static String formatSeconds(double seconds) {
+        if (Math.abs(seconds - Math.rint(seconds)) < 0.001) {
+            return String.valueOf((long) Math.rint(seconds));
+        }
+        return String.format(java.util.Locale.ROOT, "%.1f", seconds);
     }
 
     /** 在玩家脚下刷传送门粒子（等待期间） */
@@ -538,6 +561,10 @@ public final class TeleportManager {
         PendingTeleport pending = pendingTeleports.remove(player.getUniqueId());
         if (pending == null) return false;
         if (pending.task() != null) pending.task().cancel();
+        if (player.isOnline()) {
+            // 清掉 ActionBar 倒计时，避免打断后残留
+            player.sendActionBar(net.kyori.adventure.text.Component.empty());
+        }
         if (notify && player.isOnline()) {
             player.sendMessage(plugin.getMessage("teleport.cancelled",
                     "<red>传送已取消（你移动了）。</red>"));
